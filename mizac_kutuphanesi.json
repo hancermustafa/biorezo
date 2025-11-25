@@ -1,0 +1,30 @@
+{
+  "Safravi": {
+    "Genel": "Ateş elementidir. Doğası sıcak ve kurudur. Enerjileri yüksektir, liderlik vasıfları gelişmiştir.",
+    "Beslenme": "Serinletici ve nemlendirici gıdalar tüketilmelidir. \n- Salatalık, marul, kabak.\n- Ekşi meyveler (erik, nar).\n- İçecek olarak sirkencubin (sirke ve bal şerbeti) çok faydalıdır.",
+    "Psikoloji": "Çabuk öfkelenip çabuk sakinleşirler. Keskin bir zekaya sahiptirler ancak tahammülleri az olabilir.",
+    "Yasam": "Güneşin tepede olduğu saatlerde dışarı çıkmaktan kaçınmalı. Soğuk duş iyi gelir. Rekabetçi sporlardan ziyade yüzme gibi sporlar önerilir.",
+    "Riskler": ["Migren", "Safra Kesesi Taşları", "Cilt Kuruluğu", "Uykusuzluk"]
+  },
+  "Demevi": {
+    "Genel": "Hava elementidir. Doğası sıcak ve nemlidir. Kanlı canlı, neşeli ve sosyal insanlardır.",
+    "Beslenme": "Kan yapıcı gıdaları (kırmızı et, tatlılar) azaltmalıdırlar. \n- Sebze ağırlıklı beslenme.\n- Limonlu gıdalar.\n- Az ve sık yemek.",
+    "Psikoloji": "Dışa dönük, iyimser ve rahattırlar. Ancak aşırı duygu değişimleri yaşayabilirler.",
+    "Yasam": "Hacamat (Kan aldırma) en çok bu gruba yarar. Hareketsizlikten kaçınmalıdırlar.",
+    "Riskler": ["Yüksek Tansiyon", "Kalp Rahatsızlıkları", "Sivilce/Akne", "Gut"]
+  },
+  "Balgami": {
+    "Genel": "Su elementidir. Doğası soğuk ve nemlidir. Sakin, uyumlu, beyaz tenli ve yavaş hareket eden kişilerdir.",
+    "Beslenme": "Isıtıcı ve kurutucu gıdalar şarttır. \n- Süt ve süt ürünleri azaltılmalı.\n- Zencefil, tarçın, karabiber bolca kullanılmalı.\n- Bal şerbeti içilmeli.",
+    "Psikoloji": "Hafızaları bazen zayıf olabilir. Sabırlı ve barışçıldırlar. Depresyona eğilimleri olabilir.",
+    "Yasam": "Gündüz uykusundan kesinlikle kaçınmalı. Terletici sporlar ve sauna çok faydalıdır.",
+    "Riskler": ["Obezite", "Eklem Romatizması", "Unutkanlık", "Ödem"]
+  },
+  "Sovdavi": {
+    "Genel": "Toprak elementidir. Doğası soğuk ve kurudur. İnce yapılı, esmer tenli, detaycı ve kuralcıdırlar.",
+    "Beslenme": "Isıtıcı ve nemlendirici gıdalar gerekir. \n- Kuru bakliyat (mercimek, nohut) azaltılmalı.\n- Sulu tencere yemekleri (kuzu eti haşlama) yenmeli.\n- Tatlı meyveler tüketilmelidir.",
+    "Psikoloji": "İçe dönük, karamsar ve şüpheci olabilirler. Ancak işlerinde mükemmeliyetçidirler.",
+    "Yasam": "Yalnız kalmaktan kaçınmalı, sosyalleşmeli. Cildi sık sık doğal yağlarla nemlendirmeli.",
+    "Riskler": ["Varis", "Kabızlık", "Vesvese/Takıntı", "Depresyon"]
+  }
+}
