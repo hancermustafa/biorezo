@@ -12,7 +12,7 @@ import base64
 # ==========================================
 # 1. AYARLAR VE YARDIMCI FONKSİYONLAR
 # ==========================================
-DEV_MODE = False # Yayına alırken False yapabilirsin
+DEV_MODE = False  # Yayına alırken False yap
 
 st.set_page_config(page_title="Dr. Sait SEVİNÇ", layout="wide", page_icon="🩺")
 
@@ -74,7 +74,6 @@ def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html):
             .result-box {{ background-color: #f0f8ff; border: 2px solid #3498db; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 30px; }}
             .result-title {{ font-size: 1.8em; color: #e74c3c; font-weight: bold; margin-top: 5px; }}
             
-            /* Grafikler Yan Yana */
             .charts-container {{ display: flex; justify-content: space-between; margin-bottom: 30px; page-break-inside: avoid; }}
             .chart-box {{ width: 48%; border: 1px solid #eee; border-radius: 8px; padding: 10px; background: #fff; }}
             
@@ -87,7 +86,7 @@ def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html):
             
             @media print {{
                 body {{ padding: 0; margin: 0; }}
-                .charts-container {{ display: block; }} /* Baskıda alt alta olsun */
+                .charts-container {{ display: block; }}
                 .chart-box {{ width: 100%; margin-bottom: 20px; page-break-inside: avoid; }}
             }}
         </style>
@@ -198,10 +197,6 @@ st.markdown("""
     .stButton button { font-weight: 600; border-radius: 8px; transition: all 0.2s; }
     .stButton button:contains("🛠️") { background-color: #2c3e50 !important; color: white !important; border: 2px dashed #f1c40f !important; }
     
-    /* BASKI GİZLEME (Artık butonla hallediyoruz) */
-    @media print {
-        .stSidebar, .stButton, button, header, footer, [data-testid="stToolbar"] { display: none !important; }
-    }
     @media (max-width: 768px) { .menu-card { height: auto; min-height: 180px; padding: 15px; } }
 </style>
 """, unsafe_allow_html=True)
@@ -400,9 +395,23 @@ with st.sidebar:
     if st.button("🏠 Ana Menü"): st.session_state.page = "Menu"; st.rerun()
     st.divider()
     st.caption("Tamamlanan Testler")
-    st.success("✅ Genel Mizaç") if st.session_state.results_genel else st.markdown("⬜ Genel Mizaç")
-    st.success("✅ Sıcaklık/Soğukluk") if st.session_state.results_isi else st.markdown("⬜ Sıcaklık/Soğukluk")
-    st.success("✅ Islaklık/Kuruluk") if st.session_state.results_nem else st.markdown("⬜ Islaklık/Kuruluk")
+    
+    # SİDEBAR DÜZELTİLDİ (IF BLOKLARI)
+    if st.session_state.results_genel:
+        st.success("✅ Genel Mizaç")
+    else:
+        st.markdown("⬜ Genel Mizaç")
+
+    if st.session_state.results_isi:
+        st.success("✅ Sıcaklık/Soğukluk")
+    else:
+        st.markdown("⬜ Sıcaklık/Soğukluk")
+
+    if st.session_state.results_nem:
+        st.success("✅ Islaklık/Kuruluk")
+    else:
+        st.markdown("⬜ Islaklık/Kuruluk")
+        
     st.divider()
     if st.button("📄 Analiz Sonuçları", type="primary"): st.session_state.page = "Rapor"; st.rerun()
     
