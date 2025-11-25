@@ -12,7 +12,7 @@ import base64
 # ==========================================
 # 1. AYARLAR VE YARDIMCI FONKSİYONLAR
 # ==========================================
-DEV_MODE = False  # Yayına alırken False yap
+DEV_MODE = False  # Yayına alırken False
 
 st.set_page_config(page_title="Dr. Sait SEVİNÇ", layout="wide", page_icon="🩺")
 
@@ -47,12 +47,11 @@ def get_image_base64(path):
             return base64.b64encode(img_file.read()).decode()
     return None
 
-# --- HTML RAPOR OLUŞTURUCU (GRAFİK DESTEKLİ) ---
+# --- HTML RAPOR OLUŞTURUCU ---
 def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html):
     img_data = get_image_base64(LOGO_LOCAL)
     img_src = f"data:image/jpeg;base64,{img_data}" if img_data else LOGO_URL
     
-    # Risk Listesi
     risk_html = ""
     if "Riskler" in detaylar:
         for r in detaylar["Riskler"]:
@@ -73,17 +72,14 @@ def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html):
             .info {{ font-size: 1.1em; color: #555; margin-bottom: 30px; text-align: center; }}
             .result-box {{ background-color: #f0f8ff; border: 2px solid #3498db; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 30px; }}
             .result-title {{ font-size: 1.8em; color: #e74c3c; font-weight: bold; margin-top: 5px; }}
-            
             .charts-container {{ display: flex; justify-content: space-between; margin-bottom: 30px; page-break-inside: avoid; }}
             .chart-box {{ width: 48%; border: 1px solid #eee; border-radius: 8px; padding: 10px; background: #fff; }}
-            
             .section {{ margin-bottom: 20px; page-break-inside: avoid; }}
             .section h3 {{ border-left: 5px solid #1abc9c; padding-left: 10px; color: #16a085; background: #eefcf9; padding: 8px; margin-bottom: 10px; font-size: 1.2em; }}
             .content {{ padding: 0 10px; line-height: 1.5; font-size: 0.95em; }}
             ul {{ margin-top: 5px; padding-left: 20px; }}
             li {{ margin-bottom: 3px; }}
             .footer {{ margin-top: 40px; text-align: center; font-size: 0.7em; color: #999; border-top: 1px solid #eee; padding-top: 10px; }}
-            
             @media print {{
                 body {{ padding: 0; margin: 0; }}
                 .charts-container {{ display: block; }}
@@ -101,61 +97,27 @@ def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html):
                 <strong>Tarih:</strong> {tarih}
             </div>
         </div>
-
         <div class="result-box">
             <div>Baskın Mizaç</div>
             <div class="result-title">{mizac}</div>
         </div>
-
         <div class="charts-container">
-            <div class="chart-box">
-                <div style="text-align:center; font-weight:bold; margin-bottom:5px;">Mizaç Dağılımı</div>
-                {fig1_html}
-            </div>
-            <div class="chart-box">
-                <div style="text-align:center; font-weight:bold; margin-bottom:5px;">Mizaç Dengesi</div>
-                {fig2_html}
-            </div>
+            <div class="chart-box"><div style="text-align:center; font-weight:bold; margin-bottom:5px;">Mizaç Dağılımı</div>{fig1_html}</div>
+            <div class="chart-box"><div style="text-align:center; font-weight:bold; margin-bottom:5px;">Mizaç Dengesi</div>{fig2_html}</div>
         </div>
-
-        <div class="section">
-            <h3>💡 Genel Özellikler</h3>
-            <div class="content">{detaylar.get('Genel', '-')}</div>
-        </div>
-
-        <div class="section">
-            <h3>🥗 Beslenme Tavsiyeleri</h3>
-            <div class="content">{detaylar.get('Beslenme', '-')}</div>
-        </div>
-
-        <div class="section">
-            <h3>🧠 Psikolojik Durum</h3>
-            <div class="content">{detaylar.get('Psikoloji', '-')}</div>
-        </div>
-
-        <div class="section">
-            <h3>🏃 Yaşam & Tedavi Önerileri</h3>
-            <div class="content">{detaylar.get('Yasam', '-')}</div>
-        </div>
-
-        <div class="section">
-            <h3>⚠️ Olası Yatkınlıklar</h3>
-            <div class="content">
-                <ul>{risk_html}</ul>
-            </div>
-        </div>
-
-        <div class="footer">
-            Bu rapor Dr. Sait SEVİNÇ Mizaç Analiz Sistemi tarafından oluşturulmuştur.<br>
-            Tıbbi teşhis yerine geçmez, bilgilendirme amaçlıdır.
-        </div>
+        <div class="section"><h3>💡 Genel Özellikler</h3><div class="content">{detaylar.get('Genel', '-')}</div></div>
+        <div class="section"><h3>🥗 Beslenme Tavsiyeleri</h3><div class="content">{detaylar.get('Beslenme', '-')}</div></div>
+        <div class="section"><h3>🧠 Psikolojik Durum</h3><div class="content">{detaylar.get('Psikoloji', '-')}</div></div>
+        <div class="section"><h3>🏃 Yaşam & Tedavi Önerileri</h3><div class="content">{detaylar.get('Yasam', '-')}</div></div>
+        <div class="section"><h3>⚠️ Olası Yatkınlıklar</h3><div class="content"><ul>{risk_html}</ul></div></div>
+        <div class="footer">Bu rapor Dr. Sait SEVİNÇ Mizaç Analiz Sistemi tarafından oluşturulmuştur.<br>Tıbbi teşhis yerine geçmez, bilgilendirme amaçlıdır.</div>
     </body>
     </html>
     """
     return html
 
 # ==========================================
-# 🎨 CSS
+# 🎨 CSS (MOBİL UYUMLU VE ŞIK)
 # ==========================================
 st.markdown("""
 <style>
@@ -168,7 +130,7 @@ st.markdown("""
         padding: 20px; border-radius: 16px;
         box-shadow: 0 4px 20px rgba(0,0,0,0.05);
         text-align: center; border: 1px solid rgba(255,255,255,0.8);
-        height: 240px; display: flex; flex-direction: column;
+        height: 220px; display: flex; flex-direction: column;
         justify-content: center; align-items: center;
         transition: all 0.3s ease; position: relative;
     }
@@ -179,30 +141,47 @@ st.markdown("""
     .card-title { font-size: 1.2rem; font-weight: 700; color: #2c3e50; margin-bottom: 8px; line-height: 1.3; }
     .card-desc { font-size: 0.9rem; color: #7f8c8d; }
 
-    /* SORU KUTULARI */
-    .q-container-default { background-color: #f0f8ff; padding: 20px; border-radius: 10px; border-left: 6px solid #3498db; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; transition: all 0.3s ease; }
-    .q-container-filled { background-color: #ffffff; padding: 20px; border-radius: 10px; border-left: 6px solid #2ecc71; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; }
-    .q-container-error { background-color: #fff5f5; padding: 20px; border-radius: 10px; border-left: 6px solid #e74c3c; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; }
-    .q-text { font-size: 1.05rem; font-weight: 600; color: #2c3e50; margin-bottom: 8px; }
-
-    /* RAPOR */
-    .report-header { text-align: center; padding-bottom: 20px; border-bottom: 2px solid #eee; margin-bottom: 30px; }
+    /* SORU KUTULARI (Mobil İçin Özel Ayar) */
+    .q-box { 
+        padding: 18px; 
+        border-radius: 12px; 
+        margin-bottom: 15px; 
+        transition: border 0.3s; 
+    }
+    .q-default { background: #f8fbfe; border: 1px solid #dceefb; border-left: 5px solid #bdc3c7; }
+    .q-filled { background: #ffffff; border: 1px solid #e0ffe8; border-left: 5px solid #2ecc71; box-shadow: 0 2px 8px rgba(46, 204, 113, 0.1); }
+    .q-error { background: #fff5f5; border: 1px solid #ffe0e0; border-left: 5px solid #e74c3c; animation: shake 0.5s; }
+    .q-text { font-size: 1.05rem; font-weight: 600; color: #2c3e50; margin-bottom: 10px; line-height: 1.4; }
+    
+    /* BUTONLAR */
+    .stButton button { font-weight: 600; border-radius: 8px; transition: all 0.2s; }
+    .stButton button:contains("🛠️") { background-color: #2c3e50 !important; color: white !important; border: 2px dashed #f1c40f !important; }
+    
+    /* MOBİL İÇİN ÖZEL CSS (EŞSİZ DOKUNUŞ) */
+    @media (max-width: 768px) {
+        .menu-card { height: auto; min-height: 180px; padding: 15px; }
+        .q-box { padding: 12px 15px !important; margin-bottom: 12px !important; }
+        .q-text { font-size: 1rem !important; margin-bottom: 8px !important; }
+        /* Radio butonlarını sıkılaştır */
+        .stRadio > div { gap: 0px !important; }
+        .stRadio label { font-size: 0.95rem !important; }
+    }
+    
+    /* DİĞERLERİ */
     .rec-box { background: #eefcf9; border-left: 4px solid #1abc9c; padding: 15px; border-radius: 0 8px 8px 0; margin-top: 10px; line-height: 1.6; }
     .info-list { list-style: none; padding: 0; margin: 0; }
     .info-item { background: white; border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; align-items: center; border: 1px solid #eee; }
     .info-icon { font-size: 24px; margin-right: 15px; min-width: 30px; text-align: center; }
     .section-header { background-color: #f1f8ff; padding: 15px; border-radius: 10px; color: #2c3e50; font-weight: 800; font-size: 1.4rem; text-align: center; margin-top: 30px; margin-bottom: 20px; border-bottom: 4px solid #3498db; letter-spacing: 1px; }
-
-    /* BUTONLAR */
-    .stButton button { font-weight: 600; border-radius: 8px; transition: all 0.2s; }
-    .stButton button:contains("🛠️") { background-color: #2c3e50 !important; color: white !important; border: 2px dashed #f1c40f !important; }
     
-    @media (max-width: 768px) { .menu-card { height: auto; min-height: 180px; padding: 15px; } }
+    @media print {
+        .stSidebar, .stButton, button, header, footer, [data-testid="stToolbar"] { display: none !important; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. VERİ SETLERİ (SORULAR) - AYNI KALIYOR
+# 4. VERİ SETLERİ (SORULAR) - AYNI
 # ==========================================
 SORULAR_ISI = [
     {"text": "Boş vakitlerinizde ne yaparsınız?", "options": [{"text": "Evde zaman geçirmek", "value": 1}, {"text": "Çoğunlukla evde", "value": 2}, {"text": "Bazen evde bezen dışarda", "value": 3}, {"text": "Genellikle dışarda", "value": 4}, {"text": "Evin dışında", "value": 5}]},
@@ -334,15 +313,21 @@ def render_questions_with_validation(soru_listesi, key_prefix, submitted):
     for i, soru in enumerate(soru_listesi):
         key = f"{key_prefix}_{i}"
         val = st.session_state.get(key)
-        css = "q-container-default"; icon = ""; style = "color: #2c3e50;"
-        if val is not None: css = "q-container-filled"
-        if submitted and val is None: css = "q-container-error"; icon = "🔴 "; style = "color: #e74c3c; font-weight:bold;"
-        st.markdown(f"<div class='{css}'><div class='q-text' style='{style}'>{icon}{i+1}. {soru['text']}</div></div>", unsafe_allow_html=True)
+        
+        # Stil belirleme (Mobil ve Masaüstü Uyumlu)
+        css = "q-box q-default"
+        icon = ""
+        if val is not None: css = "q-box q-filled"
+        elif submitted: css = "q-box q-error"; icon = "🔴 "; missing = True
+            
+        st.markdown(f"<div class='{css}'><div class='q-text'>{icon}{i+1}. {soru['text']}</div></div>", unsafe_allow_html=True)
         options_text = [opt['text'] for opt in soru['options']]
-        choice = st.radio(f"Soru {i+1}", options_text, key=key, index=None, label_visibility="collapsed")
+        choice = st.radio(f"Soru {i+1}", options_text, key=key, index=None, label_visibility="collapsed", horizontal=True) # Horizontal eklendi, ama CSS mobilde düzeltecek
+        
         if choice:
             for opt in soru['options']:
-                if opt['text'] == choice: total_score += opt['value']; break
+                if opt['text'] == choice:
+                    total_score += opt['value']; break
         else: missing = True
     return total_score, missing
 
@@ -395,23 +380,12 @@ with st.sidebar:
     if st.button("🏠 Ana Menü"): st.session_state.page = "Menu"; st.rerun()
     st.divider()
     st.caption("Tamamlanan Testler")
-    
-    # SİDEBAR DÜZELTİLDİ (IF BLOKLARI)
-    if st.session_state.results_genel:
-        st.success("✅ Genel Mizaç")
-    else:
-        st.markdown("⬜ Genel Mizaç")
-
-    if st.session_state.results_isi:
-        st.success("✅ Sıcaklık/Soğukluk")
-    else:
-        st.markdown("⬜ Sıcaklık/Soğukluk")
-
-    if st.session_state.results_nem:
-        st.success("✅ Islaklık/Kuruluk")
-    else:
-        st.markdown("⬜ Islaklık/Kuruluk")
-        
+    if st.session_state.results_genel: st.success("✅ Genel Mizaç")
+    else: st.markdown("⬜ Genel Mizaç")
+    if st.session_state.results_isi: st.success("✅ Sıcaklık/Soğukluk")
+    else: st.markdown("⬜ Sıcaklık/Soğukluk")
+    if st.session_state.results_nem: st.success("✅ Islaklık/Kuruluk")
+    else: st.markdown("⬜ Islaklık/Kuruluk")
     st.divider()
     if st.button("📄 Analiz Sonuçları", type="primary"): st.session_state.page = "Rapor"; st.rerun()
     
@@ -509,12 +483,19 @@ elif st.session_state.page == "Test_Genel":
         for i, soru in enumerate(veri["sorular"]):
             key = f"genel_{bolum}_{i}"
             val = st.session_state.get(key)
-            css = "q-default"; icon = ""; style = "color: #2c3e50;"
-            if val: css = "q-filled"
-            elif st.session_state.submitted_genel: css = "q-error"; icon = "🔴 "; style = "color: #e74c3c; font-weight:bold;"
-            st.markdown(f"<div class='q-box {css}'><div class='q-text' style='{style}'>{icon}{i+1}. {soru}</div></div>", unsafe_allow_html=True)
+            
+            # --- RENK MANTIĞI (MOBİLDE DE ÇALIŞIR) ---
+            css = "q-box q-default" # Default
+            icon = ""; style = "color: #2c3e50;"
+            if val: css = "q-box q-filled"
+            elif st.session_state.submitted_genel: css = "q-box q-error"; icon = "🔴 "; style = "color: #e74c3c; font-weight:bold;"
+            
+            st.markdown(f"<div class='{css}'><div class='q-text' style='{style}'>{icon}{i+1}. {soru}</div></div>", unsafe_allow_html=True)
+            
+            # Horizontal=True masaüstünde yan yana, mobilde CSS ile sıkışıp alt alta
             choice = st.radio(f"{bolum} {i+1}", secenekler, key=key, index=None, horizontal=True, label_visibility="collapsed")
             if choice: cevaplar[key] = choice
+            
     if st.button("Kaydet ve Bitir", type="primary"):
         st.session_state.submitted_genel = True; st.rerun()
     if st.session_state.submitted_genel:
@@ -582,6 +563,7 @@ elif st.session_state.page == "Rapor":
         detaylar = MIZAC_BILGILERI.get(mizac_adi, {})
         st.info(f"Baskın Mizacınız: **{mizac_adi}**")
         
+        # EKRAN İÇİN SEKMELER
         tab1, tab2, tab3, tab4 = st.tabs(["💡 Genel", "🥗 Beslenme", "🧠 Psikoloji", "🏃 Yaşam"])
         with tab1: st.markdown(f"<div class='rec-box'>{detaylar.get('Genel', 'Bilgi yok')}</div>", unsafe_allow_html=True)
         with tab2: st.markdown(f"<div class='rec-box'>{detaylar.get('Beslenme', 'Bilgi yok')}</div>", unsafe_allow_html=True)
