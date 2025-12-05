@@ -9,157 +9,148 @@ import json
 import base64
 
 # ==========================================
-# 1. AYARLAR VE VERİTABANI BAĞLANTISI
+# 1. AYARLAR VE STİL YAPILANDIRMASI
 # ==========================================
-st.set_page_config(page_title="Dr. Sait SEVİNÇ - Pro Analiz", layout="wide", page_icon="🧬")
+st.set_page_config(page_title="Dr. Sait SEVİNÇ - Pro Asistan", layout="wide", page_icon="🧬")
 
-# Grafik Ayarları (Mobilde bozulmayı önler, statik yapar)
+# Grafik Ayarları (Mobil Dostu - Sabit)
 PLOTLY_CONFIG = {
-    'staticPlot': True,       # Grafiği resim gibi dondurur (Mobilde kaydırmayı düzeltir)
-    'displayModeBar': False,  # Menü çubuğunu gizler
+    'staticPlot': True,       # Mobilde zoom/pan kilitli (kaydırmayı bozmaz)
+    'displayModeBar': False,  # Menüyü gizle
     'showTips': False
 }
 
-# Veritabanı Kurulumu (SQLite)
+# --- CSS: GÖRSEL TASARIM (ORİJİNAL GÜZELLİK GERİ GELDİ) ---
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+    html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
+
+    /* MENU KARTLARI */
+    .menu-card {
+        background: linear-gradient(145deg, #ffffff, #f0f2f5);
+        padding: 20px; border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        text-align: center; border: 1px solid rgba(255,255,255,0.8);
+        height: 200px; display: flex; flex-direction: column;
+        justify-content: center; align-items: center;
+        transition: all 0.3s ease; position: relative; cursor: pointer;
+    }
+    .menu-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(52, 152, 219, 0.2); border-color: #3498db; }
+    .card-done { border: 2px solid #2ecc71 !important; background: linear-gradient(145deg, #f0fff4, #ffffff) !important; }
+    .status-badge { background-color: #2ecc71; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; margin-bottom: 10px; }
+    .card-icon { font-size: 40px; margin-bottom: 10px; }
+    .card-title { font-size: 1.1rem; font-weight: 700; color: #2c3e50; margin-bottom: 5px; }
+    .card-desc { font-size: 0.9rem; color: #7f8c8d; }
+
+    /* SORU KUTULARI (DİNAMİK RENKLENDİRME İÇİN) */
+    .q-box { 
+        padding: 15px 20px; 
+        border-radius: 12px; 
+        margin-bottom: 10px; 
+        transition: all 0.3s ease;
+    }
+    /* Varsayılan: Gri/Mavi */
+    .q-default { background: #f8fbfe; border: 1px solid #dceefb; border-left: 5px solid #bdc3c7; }
+    /* Cevaplanmış: Yeşil ve Parlak */
+    .q-filled { background: #ffffff; border: 1px solid #e0ffe8; border-left: 5px solid #2ecc71; box-shadow: 0 2px 5px rgba(46,204,113,0.1); }
+    /* Hatalı (Boş): Kırmızı ve Uyarıcı */
+    .q-error { background: #fff5f5; border: 1px solid #ffe0e0; border-left: 5px solid #e74c3c; animation: shake 0.4s; }
+    
+    .q-text { font-size: 1.05rem; font-weight: 500; color: #34495e; margin-bottom: 8px; }
+
+    /* STREAMLIT WIDGET AYARLARI */
+    .stRadio > div { gap: 0px !important; margin-top: -10px; padding-left: 10px; }
+    .stButton button { border-radius: 10px; font-weight: 600; transition: 0.3s; width: 100%; }
+    
+    @keyframes shake {
+      0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-5px); } 100% { transform: translateX(0); }
+    }
+    
+    @media (max-width: 768px) {
+        .menu-card { height: auto; min-height: 160px; padding: 15px; margin-bottom: 15px; }
+        .stRadio label { font-size: 0.9rem !important; }
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# ==========================================
+# 2. VERİTABANI (KAYIT SİSTEMİ)
+# ==========================================
 def init_db():
     conn = sqlite3.connect('analiz_gecmisi.db', check_same_thread=False)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS sonuclar
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  ad TEXT, yas INTEGER, tarih TEXT, 
+                  ad TEXT, yas INTEGER, cinsiyet TEXT, tarih TEXT, 
                   tip TEXT, ozet TEXT, detay_json TEXT)''')
     conn.commit()
     return conn
 
 CONN = init_db()
 
-# --- LOGO VE VERİ YÜKLEME ---
+# --- KAYNAK YÜKLEME ---
 @st.cache_data
 def load_resources():
     logo_path = "drsaitlogo.jpeg"
     default_logo = "https://i.ibb.co/xJc52gL/image-0.png"
-    # Mizaç Bilgileri (Kütüphane)
+    # Mizaç Kütüphanesi
     default_json = {
-        "Safravi": {"Genel": "Sıcak-Kuru mizaç. Ateş elementi. Lider, hızlı ve öfkelidir.", "Beslenme": "Serinletici ve nemlendirici gıdalar (Salatalık, marul, yoğurt).", "Riskler": ["Migren", "Safra Taşları", "Cilt Kuruluğu", "Uykusuzluk"]},
-        "Demevi": {"Genel": "Sıcak-Nemli mizaç. Hava elementi. Sosyal, neşeli ve rahattır.", "Beslenme": "Kuru ve serin gıdalar. Kırmızı eti azaltın.", "Riskler": ["Yüksek Tansiyon", "Kalp Sorunları", "Sivilce/Akne"]},
-        "Balgami": {"Genel": "Soğuk-Nemli mizaç. Su elementi. Sakin, uyumlu ve yavaştır.", "Beslenme": "Isıtıcı ve kurutucu baharatlar (Zencefil, kekik, tarçın).", "Riskler": ["Obezite", "Romatizma", "Unutkanlık", "Ödem"]},
-        "Sovdavi": {"Genel": "Soğuk-Kuru mizaç. Toprak elementi. Detaycı, planlı ve içe dönük.", "Beslenme": "Isıtıcı ve nemlendirici gıdalar (Et suyu, tereyağı).", "Riskler": ["Depresyon", "Varis", "Kabızlık", "Kuruntu"]}
+        "Safravi": {"Genel": "Sıcak-Kuru mizaç. Ateş elementi.", "Beslenme": "Serinletici gıdalar (Salatalık, marul).", "Riskler": ["Migren", "Safra", "Uykusuzluk"]},
+        "Demevi": {"Genel": "Sıcak-Nemli mizaç. Hava elementi.", "Beslenme": "Az ve sık yiyin, kırmızı eti azaltın.", "Riskler": ["Yüksek Tansiyon", "Kalp"]},
+        "Balgami": {"Genel": "Soğuk-Nemli mizaç. Su elementi.", "Beslenme": "Isıtıcı baharatlar kullanın.", "Riskler": ["Obezite", "Romatizma", "Unutkanlık"]},
+        "Sovdavi": {"Genel": "Soğuk-Kuru mizaç. Toprak elementi.", "Beslenme": "Nemlendirici ve sıcak gıdalar.", "Riskler": ["Depresyon", "Varis", "Kabızlık"]}
     }
     return logo_path, default_logo, default_json
 
 LOGO_LOCAL, LOGO_URL, MIZAC_BILGILERI = load_resources()
 
 # ==========================================
-# 2. DERİN ANALİZ MOTORU (YENİ 🔥)
+# 3. YARDIMCI MOTORLAR
 # ==========================================
-def generate_deep_analysis(mizac, cakra_sonuclar):
+# Derin Analiz Motoru
+def generate_deep_analysis(mizac, cakra_sonuclar, skorlar_isi, skorlar_nem):
     yorumlar = []
     
-    # 1. Mizaç Bazlı Derin Yorum
-    if mizac == "Safravi":
-        yorumlar.append("🔥 **Ateş Elementi Baskın:** Vücudunuzda ısı ve kuruluk hakim. Bu durum öfke kontrol sorunlarına ve inflamasyona (iltihap) yatkınlık oluşturabilir. Serinlemeniz hayati önem taşır.")
-    elif mizac == "Balgami":
-        yorumlar.append("💧 **Su Elementi Baskın:** Metabolizmanız yavaşlamaya meyilli. Hareketsizlik sizin en büyük düşmanınızdır. Isıtıcı gıdalarla sindirim ateşini yükseltmelisiniz.")
-    
-    # 2. Çakra & Mizaç Kombinasyonu (Çapraz Analiz)
+    # 1. Isı/Nem Dengesi
+    if skorlar_isi and skorlar_isi > 80: yorumlar.append("🔥 **Metabolik Ateş Yüksek:** Vücut ısınız çok yüksek, bu durum inflamasyona zemin hazırlayabilir.")
+    if skorlar_nem and skorlar_nem > 70: yorumlar.append("💧 **Nem Fazlalığı:** Vücutta ödem ve ağırlık birikimi olabilir. Lenfatik drenaj önerilir.")
+
+    # 2. Mizaç Yorumu
+    if mizac == "Safravi": yorumlar.append("🦁 **Safravi:** Lider ruhlu ama çabuk parlayan bir yapı. Karaciğer detoksu şart.")
+    elif mizac == "Sovdavi": yorumlar.append("🦅 **Sovdavi:** Derin düşünen, melankoliye yatkın yapı. Bağırsak florasını (İkinci beyin) korumalısınız.")
+
+    # 3. Çakra Kombinasyonu
     if cakra_sonuclar:
         kok = cakra_sonuclar.get("KÖK ÇAKRA (Muladhara)", {}).get("durum")
-        if kok and ("Yavaş" in kok or "Blokaj" in kok) and mizac == "Sovdavi":
-            yorumlar.append("⚠️ **Kritik Uyarı:** Toprak elementi mizacınız (Sovdavi) ile Kök Çakra blokajınız birleşmiş. Bu, aşırı gelecek kaygısı ve 'köksüzlük' hissi yaratabilir. Doğada yalın ayak yürümek sizin için en iyi ilaçtır.")
-        
-        solar = cakra_sonuclar.get("SOLAR PLEXUS (Manipura)", {}).get("durum")
-        if solar and "Aşırı" in solar and mizac == "Safravi":
-            yorumlar.append("⚠️ **Kritik Uyarı:** Ateş mizacınız ile 'Ateş Çakrası' (Solar Plexus) aynı anda yüksek çalışıyor. Mide asidi, ülser ve tükenmişlik sendromuna çok açıksınız. Rekabetten uzak durun.")
-
-    if not yorumlar:
-        yorumlar.append("✅ Genel dengeniz makul görünüyor. Mevcut yaşam tarzınızı koruyarak, mevsimsel beslenmeye dikkat ediniz.")
-        
+        if kok and ("Yavaş" in kok) and mizac == "Sovdavi":
+            yorumlar.append("⚠️ **Önemli:** Toprak mizacı + Kök blokajı = Aşırı kaygı ve güvensizlik yaratabilir. Topraklanma çalışmaları yapın.")
+            
+    if not yorumlar: yorumlar.append("✅ Genel enerji akışınız dengeli görünüyor.")
+    
     return " ".join(yorumlar)
 
-# ==========================================
-# 3. VERİTABANI İŞLEMLERİ
-# ==========================================
+# Veritabanı Kayıt
 def save_to_db(user_info, test_type, summary_text, detail_data):
     try:
         c = CONN.cursor()
         tarih = datetime.now().strftime("%Y-%m-%d %H:%M")
         detail_json = json.dumps(detail_data, ensure_ascii=False)
-        c.execute("INSERT INTO sonuclar (ad, yas, tarih, tip, ozet, detail_json) VALUES (?, ?, ?, ?, ?, ?)",
-                  (user_info['ad'], user_info['yas'], tarih, test_type, summary_text, detail_json))
+        c.execute("INSERT INTO sonuclar (ad, yas, cinsiyet, tarih, tip, ozet, detail_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                  (user_info['ad'], user_info['yas'], user_info['cinsiyet'], tarih, test_type, summary_text, detail_json))
         CONN.commit()
-        st.toast("✅ Sonuçlar Veritabanına Kaydedildi!")
+        st.toast("✅ Kayıt Başarılı!", icon="💾")
     except Exception as e:
         st.error(f"Kayıt Hatası: {e}")
 
-def get_history():
-    c = CONN.cursor()
-    c.execute("SELECT id, ad, yas, tarih, tip, ozet FROM sonuclar ORDER BY id DESC")
-    return c.fetchall()
-
-# ==========================================
-# 4. GRAFİK VE HTML FONKSİYONLARI
-# ==========================================
 def get_image_base64(path):
     if os.path.exists(path):
         with open(path, "rb") as img_file:
             return base64.b64encode(img_file.read()).decode()
     return None
 
-def create_html_report(user_info, mizac, detaylar, tarih, fig_cakra_html, cakra_sonuclar, derin_analiz):
-    img_data = get_image_base64(LOGO_LOCAL)
-    img_src = f"data:image/jpeg;base64,{img_data}" if img_data else LOGO_URL
-    
-    # Çakra Tablosu
-    cakra_rows = ""
-    if cakra_sonuclar:
-        for cakra, degerler in cakra_sonuclar.items():
-            durum = degerler['durum']
-            color = "#2ecc71" if "Dengeli" in durum else ("#f39c12" if "Hafif" in durum else "#e74c3c")
-            cakra_rows += f"<tr><td><strong>{cakra}</strong></td><td>{degerler['yavas_puan']}</td><td>{degerler['asiri_puan']}</td><td style='color:{color}'><strong>{durum}</strong></td></tr>"
-
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Analiz Raporu</title>
-        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-        <style>
-            body {{ font-family: sans-serif; color: #333; padding: 20px; max-width: 800px; margin: auto; }}
-            .header {{ text-align: center; border-bottom: 2px solid #333; margin-bottom: 20px; }}
-            .logo {{ width: 80px; }}
-            .box {{ border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 20px; background: #f9f9f9; }}
-            .deep-analysis {{ background-color: #e8f4f8; border-left: 5px solid #3498db; padding: 15px; margin: 20px 0; }}
-            table {{ width: 100%; border-collapse: collapse; font-size: 0.9em; }}
-            th, td {{ padding: 8px; border-bottom: 1px solid #ddd; text-align: center; }}
-            td:first-child {{ text-align: left; }}
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <img src="{img_src}" class="logo">
-            <h2>BÜTÜNCÜL SAĞLIK RAPORU</h2>
-            <p>{user_info.get('ad')} | {user_info.get('yas')} Yaş | {tarih}</p>
-        </div>
-        
-        <div class="deep-analysis">
-            <h3>🧠 Uzman Yorumu & Derin Analiz</h3>
-            <p>{derin_analiz}</p>
-        </div>
-
-        {'<div class="box"><h3>🦁 Baskın Mizaç: ' + mizac + '</h3><p>' + detaylar.get('Genel','') + '</p></div>' if mizac else ''}
-        
-        {'<div class="box"><h3>🌀 Çakra Analizi</h3>' + fig_cakra_html + '<table><tr><th>Çakra</th><th>Blokaj</th><th>Aşırı</th><th>Durum</th></tr>' + cakra_rows + '</table></div>' if cakra_sonuclar else ''}
-        
-        <div style="text-align:center; font-size:0.8em; color:#999; margin-top:30px;">Dr. Sait SEVİNÇ Analiz Sistemi</div>
-    </body>
-    </html>
-    """
-    return html
-
 # ==========================================
-# 5. TEST VERİLERİ (TAM SORU SETİ - RESTORE EDİLDİ)
+# 4. TEST VERİLERİ (TAM SET)
 # ==========================================
 SORULAR_ISI = [
     {"text": "Boş vakitlerinizde ne yaparsınız?", "options": [{"text": "Evde zaman geçirmek", "value": 1}, {"text": "Çoğunlukla evde", "value": 2}, {"text": "Bazen evde bezen dışarda", "value": 3}, {"text": "Genellikle dışarda", "value": 4}, {"text": "Evin dışında", "value": 5}]},
@@ -208,109 +199,175 @@ SORULAR_NEM = [
 ]
 
 SORULAR_GENEL_DETAYLI = {
-    "SICAKLIK": {
-        "puanlar": {"Hayır": 1, "Orta derece": 2, "Kesinlikle evet": 3},
-        "sorular": ["Arkadaş çevrem geniş sosyal biriyim", "Hızlı düşünür çabuk harekete geçerim", "Konuşkan sıcakkanlı bir yapım var", "Soğuk havaları severim", "Soğuk yiyecek içeceklerden hoşlanırım", "Vücudum sıcaktır", "Takıntılı değilim", "Cesur ve atak biriyim", "Çok detaylı düşünmem", "Kabızlık sorunu çok fazla yaşamam", "Rutin / tekdüze sakin yaşamdan pek sevmem", "Pozitifim", "Kuralları çok sevmem", "Sonuç odaklıyım", "Lider bir ruhum var", "Genelde enerjik bir yapım var", "Yapılanı unuturum kin tutamam", "Sır saklamakta zorlanırım anlatma eğilimim vardır"]
-    },
-    "SOĞUKLUK": {
-        "puanlar": {"Hayır": 1, "Orta derece": 2, "Kesinlikle evet": 3},
-        "sorular": ["Çok geniş bir çevrem yok", "Temkinli biriyim", "Hemen samimi olmam, seçiciyim", "Sıcak havaları severim", "Sıcak yiyecek ve içeceklerden hoşlanırım", "Vücudum soğuktur üşürüm", "Takıntılıyım", "Hassas ve alıngan biriyim", "Aceleyi sevmem işimi sağlam yavaş yavaş yaparım", "Kabızlık sorunu çok yaşarım", "Sakin yaşam severim", "Karamsarım", "Kurallara uyarım", "Süreç odaklıyım", "İyi bir takım oyuncusuyum", "Genelde enerjim düşüktür (çabuk yorulurum)", "Negatifi unutmam", "Sır saklarım"]
-    },
-    "KURULUK": {
-        "puanlar": {"Hayır": 0, "Orta derece": 2, "Kesinlikle evet": 3},
-        "sorular": ["Saçlarım kalın telli", "Zayıf ince yapılıyım", "Cildim genelde kuru", "Cilt lekelerim vardır lekelenmeye müsaittir", "Çok uyuyamam derin değildir uyanırım hemen", "Sıkı ve gergin bir cildim var", "Göz yapım küçüktür", "Belim nispeten incedir", "Hafızam kuvvetlidir", "Duyularım gelişmiştir duyma/ koku alma", "Esnek biri değilim uyum sağlamam zordur", "Eklemlerim çıkıntılı", "Tenim daha sarı ve koyu renkte", "Tırnaklarım serttir", "Çabuk pes etmem ısrarcıyım", "Genelde burun akıntım çok az olur", "Kaşıntı egzemaya yatkınlığım fazladır", "Ağız kuruluğum fazladır"]
-    },
-    "NEMLİLİK": {
-        "puanlar": {"Hayır": 0, "Orta derece": 1, "Kesinlikle evet": 2},
-        "sorular": ["Saçlarım ince telli", "Kiloluyum", "Cildim yumuşaktır", "Uykuyu severim derin uyurum", "Çok az cilt lekelerim var", "Cildim yumuşak ve esnektir", "Göz yapım iri ve nemlidir", "Belim nispeten kalındır", "Hafızam kuvvetli değil tekrarlamazsam çabuk unuturum", "Duyularım zayıftır koku alma/işitme", "Esnek biriyim uyum sağlarım", "Eklemlerim, hatlarım belirgin değildir", "Yuvarlak yüzlüyüm", "Tırnak yapım yumuşaktır", "Çabuk pes ederim bıkarım", "Burun akıntım olur", "Egzema ve kaşıntı çok nadir görülür", "Ağız kuruluğum yoktur sulu ve yoğun olabilir"]
-    }
+    "SICAKLIK": {"puanlar": {"Hayır": 1, "Orta derece": 2, "Kesinlikle evet": 3}, "sorular": ["Arkadaş çevrem geniş sosyal biriyim", "Hızlı düşünür çabuk harekete geçerim", "Konuşkan sıcakkanlı bir yapım var", "Soğuk havaları severim", "Soğuk yiyecek içeceklerden hoşlanırım", "Vücudum sıcaktır", "Takıntılı değilim", "Cesur ve atak biriyim", "Çok detaylı düşünmem", "Kabızlık sorunu çok fazla yaşamam", "Rutin / tekdüze sakin yaşamdan pek sevmem", "Pozitifim", "Kuralları çok sevmem", "Sonuç odaklıyım", "Lider bir ruhum var", "Genelde enerjik bir yapım var", "Yapılanı unuturum kin tutamam", "Sır saklamakta zorlanırım anlatma eğilimim vardır"]},
+    "SOĞUKLUK": {"puanlar": {"Hayır": 1, "Orta derece": 2, "Kesinlikle evet": 3}, "sorular": ["Çok geniş bir çevrem yok", "Temkinli biriyim", "Hemen samimi olmam, seçiciyim", "Sıcak havaları severim", "Sıcak yiyecek ve içeceklerden hoşlanırım", "Vücudum soğuktur üşürüm", "Takıntılıyım", "Hassas ve alıngan biriyim", "Aceleyi sevmem işimi sağlam yavaş yavaş yaparım", "Kabızlık sorunu çok yaşarım", "Sakin yaşam severim", "Karamsarım", "Kurallara uyarım", "Süreç odaklıyım", "İyi bir takım oyuncusuyum", "Genelde enerjim düşüktür (çabuk yorulurum)", "Negatifi unutmam", "Sır saklarım"]},
+    "KURULUK": {"puanlar": {"Hayır": 0, "Orta derece": 2, "Kesinlikle evet": 3}, "sorular": ["Saçlarım kalın telli", "Zayıf ince yapılıyım", "Cildim genelde kuru", "Cilt lekelerim vardır lekelenmeye müsaittir", "Çok uyuyamam derin değildir uyanırım hemen", "Sıkı ve gergin bir cildim var", "Göz yapım küçüktür", "Belim nispeten incedir", "Hafızam kuvvetlidir", "Duyularım gelişmiştir duyma/ koku alma", "Esnek biri değilim uyum sağlamam zordur", "Eklemlerim çıkıntılı", "Tenim daha sarı ve koyu renkte", "Tırnaklarım serttir", "Çabuk pes etmem ısrarcıyım", "Genelde burun akıntım çok az olur", "Kaşıntı egzemaya yatkınlığım fazladır", "Ağız kuruluğum fazladır"]},
+    "NEMLİLİK": {"puanlar": {"Hayır": 0, "Orta derece": 1, "Kesinlikle evet": 2}, "sorular": ["Saçlarım ince telli", "Kiloluyum", "Cildim yumuşaktır", "Uykuyu severim derin uyurum", "Çok az cilt lekelerim var", "Cildim yumuşak ve esnektir", "Göz yapım iri ve nemlidir", "Belim nispeten kalındır", "Hafızam kuvvetli değil tekrarlamazsam çabuk unuturum", "Duyularım zayıftır koku alma/işitme", "Esnek biriyim uyum sağlarım", "Eklemlerim, hatlarım belirgin değildir", "Yuvarlak yüzlüyüm", "Tırnak yapım yumuşaktır", "Çabuk pes ederim bıkarım", "Burun akıntım olur", "Egzema ve kaşıntı çok nadir görülür", "Ağız kuruluğum yoktur sulu ve yoğun olabilir"]}
 }
 
 SORULAR_CAKRA = {
-    "KÖK ÇAKRA (Muladhara)": [
-        "Kendimi çoğu zaman güvensiz, huzursuz ya da korunmasız hissediyorum.", "Değersiz ya da yetersiz biriymişim gibi hissettiğim anlar sık yaşanıyor.", "Günlük yaşamımda temel ihtiyaçlarımı bile karşılamakta zorlanıyorum.", "Parasal konular beni çok tedirgin ediyor; sürekli bir yokluk kaygısı taşıyorum.",
-        "Fiziksel olarak zayıf, halsiz ve enerjisiz hissediyorum.", "Aidiyet hissim zayıf; ne bir yere ne de birilerine gerçekten ait hissedemiyorum.", "Hızlıca odaklanamıyor, başladığım işleri tamamlayamıyorum.", "Bağımlı ilişkiler kurmaya eğilimliyim; tek başıma güvende hissedemiyorum.",
-        "Maddi güvence konusunda aşırı takıntılıyım; sahip olduklarımı kaybetme korkusu taşıyorum.", "Fazla inatçı, kontrolcü ve değişime kapalı biri olduğumu düşünüyorum.", "İnsanlara kolay kolay güvenemem, her şeyin altında bir tehdit ararım.", "Fiziksel dünyaya fazlasıyla bağlıyım; maneviyatla ilişkim çok zayıf.",
-        "Bırakamama, tutunma, bir şeyi ya da kişiyi bırakınca sanki parçalanacakmışım gibi hissediyorum.", "Kızgınlık, öfke ya da patlayıcı tepkilerle çevreme zarar verebiliyorum.", "Kendi isteklerim doğrultusunda başkalarını yönlendirmeye ya da baskılamaya çalışıyorum.", "Gücü elimde tutma, her şeye hâkim olma arzusu beni yoruyor."
-    ],
-    "SAKRAL ÇAKRA (Svadhisthana)": [
-        "Duygularımı ifade etmekte zorlanıyor, çoğu zaman içime atıyorum.", "Cinselliğe karşı isteksizlik ya da yabancılaşma yaşıyorum.", "Hayattan keyif almakta zorlanıyor, neşesiz hissediyorum.", "Yaratıcılığımı göstermekten çekiniyor ya da ilham bulmakta zorlanıyorum.",
-        "Kendime dair tatmin duygum oldukça düşük; hiçbir şeyden tam olarak memnun olmuyorum.", "Başkalarıyla derin bağ kurmakta zorlanıyor, yalnız kalmayı tercih ediyorum.", "Geçmiş duygusal yaralardan kurtulamadığımı hissediyorum.", "Bedenimle olan ilişkim zayıf, çoğu zaman ona yabancı gibiyim.",
-        "Sürekli bir haz peşindeyim; duygusal ya da fiziksel tatmin benim için çok önemli.", "Aşırı cinsellik ya da duygusal bağımlılık gibi durumlara eğilimim var.", "Duygularım çok yoğun ve ani; sıklıkla dalgalanma yaşıyorum.", "Tüketim, alışveriş, yemek gibi haz veren şeylere bağımlı hissediyorum.",
-        "Duygusal ilişkilerde sınır koymakta zorlanıyor, kendimi kaybediyorum.", "Aşırı hassasım; başkalarının duygusal durumlarından kolay etkileniyorum.", "Sanatsal ya da yaratıcı alanlarda abartıya kaçtığımı düşünüyorum.", "Kontrolsüz duygusal tepkiler veriyor, sonra pişman oluyorum."
-    ],
-    "SOLAR PLEXUS (Manipura)": [
-        "Karar vermekte zorlanıyor ve çoğu zaman başkalarının onayını bekliyorum.", "Hayır demekte zorlanıyorum; sınırlarımı belirleyemiyorum.", "Kendi gücümü ortaya koymakta zorluk yaşıyor, çekingen davranıyorum.", "Sık sık yetersiz ya da başarısız hissediyorum.",
-        "Başladığım işleri tamamlamakta zorlanıyor, motivasyon kaybı yaşıyorum.", "Eleştiriler karşısında kolayca kırılıyor, savunmasız hissediyorum.", "Kendime güvenmekte zorlanıyor, içimde sürekli bir eksiklik hissediyorum.", "Başarıya dair arzularım var ama harekete geçecek enerjiyi bulamıyorum.",
-        "Kontrolü kaybetmekten korkuyorum; her şeyin benim istediğim gibi olmasını istiyorum.", "Gücümü göstermek için bazen baskıcı ya da manipülatif davranıyorum.", "Başkalarının alanına girmeye eğilimliyim; her şeye müdahil olmak istiyorum.", "Aşırı rekabetçiyim; sürekli üstün gelme ihtiyacı hissediyorum.",
-        "Kendimi çok fazla ön plana çıkarıyor, dikkat çekmek istiyorum.", "Başkalarının duygularını görmezden gelerek sadece kendi isteklerime odaklanabiliyorum.", "Öfke patlamaları yaşıyor, küçük konulara aşırı tepki veriyorum.", "Başarıya bağımlıyım; başarısızlık korkusu beni sürekli tedirgin ediyor."
-    ],
-    "KALP ÇAKRASI (Anahata)": [
-        "Başkalarına karşı sevgimi ifade etmekte zorlanıyorum.", "Kırıldığım kişileri affetmek bana çok zor geliyor.", "İnsanlara güvenmekte zorlanıyorum; duygusal olarak geri çekiliyorum.", "Kendimi sevmekte ve kendime değer vermekte zorlanıyorum.",
-        "Duygusal ilişkiler beni yıpratıyor; çoğunlukla kaçınmayı tercih ediyorum.", "Kalbimin kapalı olduğunu hissediyorum; kimseye gerçekten açılamıyorum.", "Geçmiş acılar hâlâ içimde yer tutuyor ve içsel huzurumu engelliyor.", "Sevgi vermektense almayı bekliyorum; paylaşmakta zorlanıyorum.",
-        "Herkese yardım etmek zorundaymışım gibi hissediyorum; kendimi ihmal ediyorum.", "İnsanların duygularını o kadar çok hissediyorum ki, kendi sınırlarımı kaybediyorum.", "Başkalarının onayına ve sevgisine bağımlı hissediyorum.", "Duygusal ilişkilerde kendimi fazla veriyor, sonra tükeniyorum.",
-        "Hayır diyememek beni sürekli zor durumda bırakıyor.", "Kırılganlığım o kadar yoğun ki, başkalarının duygularıyla boğuluyorum.", "Aşırı özverili davranıyor, karşılık beklemesem bile yıpranıyorum.", "Sevgi adına kendi ihtiyaçlarımı ve isteklerimi yok sayıyorum."
-    ],
-    "BOĞAZ ÇAKRASI (Vishuddha)": [
-        "Duygularımı ya da düşüncelerimi açıkça ifade etmekte zorlanıyorum.", "Topluluk önünde konuşmak beni çok geriyor, hatta kaçınmaya çalışıyorum.", "Kendimi bastırılmış ya da sesi kısılmış biri gibi hissediyorum.", "Doğru zamanda, doğru şekilde konuşamadığımı fark ediyorum.",
-        "İletişimde sürekli yanlış anlaşıldığımı düşünüyorum.", "Düşüncelerimi toparlamakta ya da kendimi açık ifade etmekte zorlanıyorum.", "Kendimi ifade etme hakkım yokmuş gibi hissediyorum.", "Çoğu zaman sessiz kalmayı tercih ediyorum, içime kapanıyorum.",
-        "Sürekli konuşma ihtiyacı hissediyorum, karşımdakini dinlemekte zorlanıyorum.", "İnsanlara düşüncelerimi zorla kabul ettirmeye çalışıyorum.", "Aşırı açıklık ya da fazla detaylı konuşma eğilimim var.", "Başkalarının sözünü sık sık kesiyor ya da üstünlük kurmaya çalışıyorum.",
-        "Eleştiriyi kaldıramıyor ve hemen savunmaya geçiyorum.", "Kendimi ifade ederken farkında olmadan kırıcı ya da saldırgan olabiliyorum.", "Ses tonumla veya ifadelerimle dikkat çekmeye çalışıyorum.", "Başkalarını susturup yalnızca kendi düşüncelerime alan açmak istiyorum."
-    ],
-    "GÖZ ÇAKRASI (Ajna)": [
-        "İçgüdülerime güvenmekte zorlanıyor, sürekli dış onay arıyorum.", "Geleceğe dair net bir vizyonum yok; yönümü bulmakta zorlanıyorum.", "Zihnim dağınık, düşüncelerim bulanık ve kararsızlık içinde hissediyorum.", "Meditasyon ya da içsel sessizlik çalışmalarında zorluk yaşıyorum.",
-        "Sezgisel sinyalleri algılayamıyor veya yok sayıyorum.", "Mantık ve sezgi arasında sürekli bir çatışma yaşıyorum.", "Hayal kurmakta, yaratıcı düşünmekte zorluk çekiyorum.", "Geçmişte yaşananlara takılı kalıyor, geleceğe dair umut beslemekte zorlanıyorum.",
-        "Sürekli zihnimde yaşıyor, gerçeklikten kopuyorum.", "Olaylara aşırı anlamlar yüklüyor, kuruntular içinde kayboluyorum.", "Rüyalar, semboller ya da işaretlerle aşırı meşgul oluyorum.", "Gerçeklikten uzaklaşma ya da spiritüel kaçış hali yaşıyorum.", "İnsanların ne düşündüğünü “hissettiğime” çok fazla inanıyorum.", "Kontrol edilemeyen bir zihinsel aktivite ve içsel konuşma beni yoruyor.",
-        "Gelecekle ilgili aşırı hayal kuruyor ama eyleme geçemiyorum.", "Gerçeklikten kopmama neden olan takıntılı düşünce kalıplarım var."
-    ],
-    "TAÇ ÇAKRASI (Sahasrara)": [
-        "Kendimi evrenden veya daha büyük bir bütünün parçası olarak hissetmekte zorlanıyorum.", "Manevi pratiklere veya içsel yolculuğa karşı ilgisiz ya da uzak hissediyorum.", "Anlam ve amaç bulmakta güçlük çekiyorum.", "Ruhsal ya da kişisel gelişimle ilgili deneyimlere kapalıyım.",
-        "İçsel huzur ve sükunet duygusundan yoksunum.", "Meditasyon ya da sessizlik içinde olmaktan kaçınıyorum.", "Hayatımda bir boşluk, anlamsızlık ya da kopukluk hissediyorum.", "Ruhsal deneyimlerimde kararsızlık ya da inanç eksikliği yaşıyorum.",
-        "Kendimi sürekli evrensel bilinçle bağlantılı hissediyor, gerçeklikten kopuyorum.", "Dünyadan, günlük hayattan ve bedensel deneyimlerden uzaklaşıyorum.", "Spiritüel uygulamalara aşırı odaklanıyor, bazen fanatikleşiyorum.", "Kendi bedenimi ve maddi dünyayı ihmal ediyorum.",
-        "Sıklıkla kendimi “aydınlanmış” veya “öteki seviyede” biri olarak görüyorum.", "Günlük sorumluluklarımdan kaçıyor, gerçeklerle yüzleşmekte zorlanıyorum.", "Spiritüel bilgileri abartıyor ya da bu alanda kendimi üstün görüyorum.", "Manevi deneyimlere aşırı bağımlılık hissediyorum."
-    ]
+    "KÖK ÇAKRA (Muladhara)": ["Kendimi güvensiz hissediyorum", "Değersiz hissediyorum", "Temel ihtiyaçlarımı karşılamakta zorlanıyorum", "Para konularında tedirginim", "Fiziksel olarak zayıfım", "Aidiyet hissim zayıf", "Odaklanamıyorum", "Bağımlı ilişkiler kuruyorum", "Maddi güvence takıntım var", "İnatçıyım", "Güvenemem", "Maneviyatım zayıf", "Bırakamıyorum", "Öfkeliyim", "Baskıcıyım", "Güç tutkum var"],
+    "SAKRAL ÇAKRA (Svadhisthana)": ["Duygularımı içime atarım", "Cinselliğe isteksizim", "Hayattan keyif alamıyorum", "Yaratıcılığım tıkalı", "Tatmin olamıyorum", "Yalnızlığı seçerim", "Geçmiş yaralarım var", "Bedenime yabancıyım", "Sürekli haz peşindeyim", "Bağımlılıklara eğilimliyim", "Duygularım dalgalı", "Alışveriş bağımlısıyım", "Sınır koyamam", "Aşırı hassasım", "Abartıya kaçarım", "Pişmanlık duyarım"],
+    "SOLAR PLEXUS (Manipura)": ["Onay beklerim", "Hayır diyemem", "Çekingenim", "Yetersiz hissederim", "Motivasyonum düşük", "Eleştiriye kırılırım", "Özgüvenim eksik", "Harekete geçemem", "Kontrol delisiyim", "Manipülatifim", "Müdahaleciyim", "Rekabetçiyim", "Dikkat çekmek isterim", "Bencillik yapabilirim", "Öfke patlamaları yaşarım", "Başarıya bağımlıyım"],
+    "KALP ÇAKRASI (Anahata)": ["Sevgimi gösteremem", "Affedemem", "Güvenemem", "Kendimi sevmem", "İlişkilerden kaçarım", "Kalbimi kapatırım", "Geçmiş acıları tutarım", "Paylaşamam", "Kendimi feda ederim", "Sınırlarımı kaybederim", "Onay bağımlısıyım", "Tükenmiş hissederim", "Hayır diyemem", "Başkalarının duygularıyla boğulurum", "Aşırı vericiyim", "Kendi ihtiyaçlarımı yok sayarım"],
+    "BOĞAZ ÇAKRASI (Vishuddha)": ["Kendimi ifade edemem", "Toplulukta konuşamam", "Sesim kısılır", "Yanlış anlaşılırım", "Düşüncelerimi toparlayamam", "Kendimi ifade etme hakkım yok gibi", "Sessiz kalırım", "Dinlemem sadece konuşurum", "Düşüncelerimi dayatırım", "Çok detaylı konuşurum", "Söz keserim", "Eleştiriye gelemem", "Kırıcı konuşurum", "Sesimi yükseltirim", "Başkalarını sustururum"],
+    "GÖZ ÇAKRASI (Ajna)": ["İçgüdüme güvenmem", "Vizyonum yok", "Zihnim bulanık", "Meditasyon yapamam", "Sezgilerimi yok sayarım", "Mantık-sezgi çatışması yaşarım", "Hayal kuramam", "Umutsuzum", "Sürekli hayal dünyasındayım", "Kuruntuluyum", "Sembollere takıntılıyım", "Gerçeklikten kaçarım", "Başkalarının düşüncelerini okuduğumu sanırım", "Zihnim susmaz", "Eyleme geçemem", "Takıntılı düşüncelerim var"],
+    "TAÇ ÇAKRASI (Sahasrara)": ["Bütünden kopuk hissederim", "Maneviyata uzağım", "Amaçsızım", "Gelişime kapalıyım", "Huzursuzum", "Sessizlikten kaçarım", "Boşluktayım", "İnançsızım", "Gerçeklikten kopuğum", "Dünyadan uzaklaştım", "Fanatikleşebilirim", "Bedenimi ihmal ederim", "Kendimi üstün görürüm", "Sorumluluktan kaçarım", "Spiritüel egom var", "Manevi bağımlılığım var"]
 }
 
 # ==========================================
-# 6. FONKSİYONLAR
+# 5. UYGULAMA MANTIĞI
 # ==========================================
 def init_state():
-    defaults = {
-        "page": "Giriş", "user_info": {}, 
-        "results_isi": None, "results_nem": None, "results_genel": None, "results_cakra": None,
-        "genel_skorlar": {}, "genel_yuzdeler": {}, "scores": {"isi": 0, "nem": 0},
-        "submitted_genel": False, "submitted_isi": False, "submitted_nem": False, "submitted_cakra": False
-    }
-    for k, v in defaults.items():
-        if k not in st.session_state: st.session_state[k] = v
+    if "user_info" not in st.session_state:
+        st.session_state.update({
+            "page": "Giriş", "user_info": {}, 
+            "results_isi": None, "results_nem": None, "results_genel": None, "results_cakra": None,
+            "genel_skorlar": {}, "genel_yuzdeler": {}, "scores": {"isi": 0, "nem": 0},
+            "submitted_genel": False, "submitted_isi": False, "submitted_nem": False, "submitted_cakra": False
+        })
 
-def render_questions_with_validation(soru_listesi, key_prefix, submitted):
+# --- SORU RENDER MOTORU (GÖRSEL DÜZELTMELER BURADA) ---
+def render_questions_pro(soru_listesi, key_prefix, submitted):
     total_score = 0
     missing = False
+    
     for i, soru in enumerate(soru_listesi):
         key = f"{key_prefix}_{i}"
         val = st.session_state.get(key)
-        css = "q-box q-default"
-        icon = ""
-        if val is not None: css = "q-box q-filled"
-        elif submitted: css = "q-box q-error"; icon = "🔴 "; missing = True
-            
-        st.markdown(f"<div class='{css}'><div class='q-text'>{icon}{i+1}. {soru['text']}</div></div>", unsafe_allow_html=True)
-        options_text = [opt['text'] for opt in soru['options']]
-        choice = st.radio(f"Soru {i+1}", options_text, key=key, index=None, label_visibility="collapsed", horizontal=True)
-        if choice:
-            for opt in soru['options']:
-                if opt['text'] == choice: total_score += opt['value']; break
+        
+        # Dinamik CSS Sınıfı Belirleme
+        box_class = "q-default"
+        if val is not None: box_class = "q-filled"
+        elif submitted: box_class = "q-error" # Sadece gönderildiyse ve boşsa kırmızı yap
+        
+        # HTML ile Soruyu Çiz
+        st.markdown(f"""<div class='q-box {box_class}'><div class='q-text'>{i+1}. {soru['text']}</div></div>""", unsafe_allow_html=True)
+        
+        # Seçenekleri Hazırla
+        options_map = {opt['text']: opt['value'] for opt in soru['options']}
+        
+        # Radio Buton (index=None ile varsayılan seçimi kaldırıyoruz!)
+        choice = st.radio(
+            f"{key}_radio", 
+            options=list(options_map.keys()), 
+            key=key, 
+            index=None, # İŞTE BU! Varsayılanı boş getirir.
+            label_visibility="collapsed",
+            horizontal=True
+        )
+        
+        if choice: total_score += options_map[choice]
         else: missing = True
+            
     return total_score, missing
+
+# --- HTML RAPOR OLUŞTURUCU (RESPONSIVE) ---
+def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, fig_cakra_html, cakra_sonuclar, derin_analiz):
+    img_data = get_image_base64(LOGO_LOCAL)
+    img_src = f"data:image/jpeg;base64,{img_data}" if img_data else LOGO_URL
+    
+    mizac_display = mizac if mizac else "Henüz Belirlenmedi"
+    detaylar = detaylar if detaylar else {}
+    
+    risk_html = ""
+    if "Riskler" in detaylar:
+        for r in detaylar["Riskler"]: risk_html += f"<li>{r}</li>"
+
+    # Çakra Tablosu
+    cakra_rows = ""
+    if cakra_sonuclar:
+        for cakra, degerler in cakra_sonuclar.items():
+            durum = degerler['durum']
+            color = "#2ecc71" if "Dengeli" in durum else ("#f39c12" if "Hafif" in durum else "#e74c3c")
+            cakra_rows += f"<tr><td data-label='Çakra'><strong>{cakra}</strong></td><td data-label='Yavaş'>{degerler['yavas_puan']}</td><td data-label='Aşırı'>{degerler['asiri_puan']}</td><td data-label='Durum' style='color:{color}'><strong>{durum}</strong></td></tr>"
+
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Analiz Raporu</title>
+        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+        <style>
+            body {{ font-family: 'Helvetica', sans-serif; padding: 20px; max-width: 800px; margin: auto; background: #fff; }}
+            .header {{ text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }}
+            .logo {{ height: 80px; }}
+            .box {{ border: 1px solid #eee; padding: 15px; border-radius: 8px; margin-bottom: 20px; background: #fdfdfd; page-break-inside: avoid; }}
+            .alert {{ background: #e8f4f8; border-left: 5px solid #3498db; padding: 15px; margin: 20px 0; }}
+            table {{ width: 100%; border-collapse: collapse; }}
+            th, td {{ padding: 8px; border-bottom: 1px solid #eee; text-align: center; font-size: 0.9em; }}
+            td:first-child {{ text-align: left; }}
+            @media screen and (max-width: 768px) {{
+                table, thead, tbody, th, td, tr {{ display: block; }}
+                thead tr {{ position: absolute; top: -9999px; left: -9999px; }}
+                tr {{ border: 1px solid #ccc; margin-bottom: 10px; border-radius: 8px; }}
+                td {{ border: none; border-bottom: 1px solid #eee; position: relative; padding-left: 50%; text-align: right; }}
+                td:before {{ position: absolute; top: 6px; left: 6px; width: 45%; padding-right: 10px; white-space: nowrap; text-align: left; font-weight: bold; content: attr(data-label); }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <img src="{img_src}" class="logo">
+            <h2>BÜTÜNCÜL SAĞLIK RAPORU</h2>
+            <p><strong>{user_info.get('ad')}</strong> | {user_info.get('yas')} Yaş | {tarih}</p>
+        </div>
+        
+        <div class="alert">
+            <h3>🧠 Uzman Yorumu & Derin Analiz</h3>
+            <p>{derin_analiz}</p>
+        </div>
+
+        {'<div class="box"><h3>🦁 Mizaç: ' + mizac_display + '</h3>' + fig1_html + fig2_html + '<p><strong>Genel:</strong> ' + detaylar.get('Genel','-') + '</p><p><strong>Beslenme:</strong> ' + detaylar.get('Beslenme','-') + '</p><ul>' + risk_html + '</ul></div>' if mizac else ''}
+        
+        {'<div class="box"><h3>🌀 Çakra Enerji Durumu</h3>' + fig_cakra_html + '<table><thead><tr><th>Çakra</th><th>Yavaş</th><th>Aşırı</th><th>Durum</th></tr></thead><tbody>' + cakra_rows + '</tbody></table></div>' if cakra_sonuclar else ''}
+        
+        <div style="text-align:center; font-size:0.8em; color:#999; margin-top:30px;">Dr. Sait SEVİNÇ Analiz Sistemi</div>
+    </body>
+    </html>
+    """
+    return html
+
+# ==========================================
+# 6. HESAPLAMA MANTIKLARI
+# ==========================================
+def calculate_result_isi(score): return "SICAK" if score > 79 else ("MUTEDİL" if score > 70 else "SOĞUK")
+def calculate_result_nem(score): return "KURU" if score > 69 else ("MUTEDİL" if score > 60 else "NEMLİ")
+
+def genel_mizac_hesapla(cevaplar):
+    skorlar = {}; yuzdeler = {}
+    for bolum, veri in SORULAR_GENEL_DETAYLI.items():
+        toplam = 0; max_puan = len(veri["sorular"]) * 3
+        for i in range(len(veri["sorular"])):
+            key = f"genel_{bolum}_{i}"
+            val_text = cevaplar.get(key)
+            if val_text: toplam += veri["puanlar"][val_text]
+        skorlar[bolum] = toplam
+        yuzdeler[bolum] = (toplam / max_puan) * 100 if max_puan > 0 else 0
+    
+    # Mizaç Belirleme
+    isi = "SICAK" if yuzdeler["SICAKLIK"] >= yuzdeler["SOĞUKLUK"] else "SOĞUK"
+    nem = "KURU" if yuzdeler["KURULUK"] >= yuzdeler["NEMLİLİK"] else "NEMLİ"
+    
+    mizac_adi = "Mutedil"
+    if "SICAK" in isi and "KURU" in nem: mizac_adi = "Safravi"
+    elif "SICAK" in isi and "NEMLİ" in nem: mizac_adi = "Demevi"
+    elif "SOĞUK" in isi and "NEMLİ" in nem: mizac_adi = "Balgami"
+    elif "SOĞUK" in isi and "KURU" in nem: mizac_adi = "Sovdavi"
+    
+    return mizac_adi, skorlar, yuzdeler
 
 def calculate_cakra_results(answers):
     sonuclar = {}
     for cakra_adi, sorular in SORULAR_CAKRA.items():
         yavas_toplam = 0
         asiri_toplam = 0
+        # İlk 8 soru yavaşlık, Sonraki 8 soru aşırılık (Toplam 16 soru)
         for i in range(16):
             key = f"cakra_{cakra_adi}_{i}"
+            # 1-5 arası puan (index+1)
             val = answers.get(key, 0)
             if i < 8: yavas_toplam += val
             else: asiri_toplam += val
@@ -324,28 +381,10 @@ def calculate_cakra_results(answers):
         sonuclar[cakra_adi] = {"yavas_puan": yavas_toplam, "asiri_puan": asiri_toplam, "durum": durum}
     return sonuclar
 
-def calculate_result_isi(score): return "SICAK" if score > 79 else ("MUTEDİL" if score > 70 else "SOĞUK")
-def calculate_result_nem(score): return "KURU" if score > 69 else ("MUTEDİL" if score > 60 else "NEMLİ")
-
-def genel_mizac_hesapla(cevaplar):
-    skorlar = {}; yuzdeler = {}
-    for bolum, veri in SORULAR_GENEL_DETAYLI.items():
-        toplam = 0; max_puan = len(veri["sorular"]) * 3
-        for i in range(len(veri["sorular"])):
-            key = f"genel_{bolum}_{i}"
-            secim = cevaplar.get(key)
-            if secim: toplam += veri["puanlar"][secim]
-        skorlar[bolum] = toplam
-        yuzdeler[bolum] = (toplam / max_puan) * 100 if max_puan > 0 else 0
-    isi = "SICAK" if yuzdeler["SICAKLIK"] >= yuzdeler["SOĞUKLUK"] else "SOĞUK"
-    nem = "KURU" if yuzdeler["KURULUK"] >= yuzdeler["NEMLİLİK"] else "NEMLİ"
-    mizac_adi = "Safravi" if "SICAK" in isi and "KURU" in nem else ("Demevi" if "NEMLİ" in nem else ("Balgami" if "SOĞUK" in isi and "NEMLİ" in nem else "Sovdavi"))
-    return mizac_adi, skorlar, yuzdeler
-
 def reset_app(): st.session_state.clear(); st.rerun()
 
 # ==========================================
-# 7. UYGULAMA AKIŞI
+# 7. UYGULAMA AKIŞI (MAIN)
 # ==========================================
 init_state()
 
@@ -356,23 +395,26 @@ with st.sidebar:
     if st.session_state.user_info: st.success(f"👤 {st.session_state.user_info.get('ad')}")
     if st.button("🏠 Ana Menü"): st.session_state.page = "Menu"; st.rerun()
     st.divider()
+    
+    # Durumlar
     chk = lambda x: "✅" if x else "⬜"
+    st.caption("Tamamlanan Analizler")
     st.markdown(f"{chk(st.session_state.results_genel)} Genel Mizaç")
+    st.markdown(f"{chk(st.session_state.results_isi)} Isı Dengesi")
+    st.markdown(f"{chk(st.session_state.results_nem)} Nem Dengesi")
     st.markdown(f"{chk(st.session_state.results_cakra)} Çakra Enerjisi")
     
     st.divider()
-    
-    # GEÇMİŞ KAYITLARI GÖRÜNTÜLEME
     if st.button("🗄️ Hasta Geçmişi"): st.session_state.page = "History"; st.rerun()
-
-    if st.button("📄 Raporu Görüntüle", type="primary"): 
+    
+    if st.button("📄 Sonuç Raporu", type="primary"):
         if st.session_state.results_genel or st.session_state.results_cakra:
             st.session_state.page = "Rapor"; st.rerun()
-        else:
-            st.warning("Henüz hiç analiz yapmadınız.")
+        else: st.warning("Henüz test yapılmadı.")
+        
+    if st.button("🔄 Oturumu Sıfırla", type="secondary"): reset_app()
 
-    if st.button("🔄 Sıfırla", type="secondary"): reset_app()
-
+# --- SAYFALAR ---
 if st.session_state.page == "Giriş":
     st.markdown("<div style='text-align:center; padding: 20px;'><h1>Bütüncül Analiz Sistemi</h1></div>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 2, 1])
@@ -387,15 +429,22 @@ if st.session_state.page == "Giriş":
                 else: st.warning("İsim giriniz.")
 
 elif st.session_state.page == "History":
-    st.title("🗄️ Hasta Geçmişi")
-    records = get_history()
-    if records:
-        for r in records:
-            with st.expander(f"{r[2]} yaş | {r[1]} | {r[3]} ({r[4]})"):
-                st.write(f"**Özet:** {r[5]}")
+    st.title("🗄️ Hasta Kayıtları")
+    # Veritabanını İndirme Butonu
+    with open("analiz_gecmisi.db", "rb") as fp:
+        btn = st.download_button(label="📥 Veritabanını İndir (.db)", data=fp, file_name="analiz_gecmisi.db", mime="application/octet-stream")
+    
+    st.markdown("---")
+    c = CONN.cursor()
+    c.execute("SELECT * FROM sonuclar ORDER BY id DESC")
+    data = c.fetchall()
+    if data:
+        df = pd.DataFrame(data, columns=["ID", "Ad", "Yaş", "Cinsiyet", "Tarih", "Tip", "Özet", "JSON"])
+        st.dataframe(df.drop(columns=["JSON"]), use_container_width=True)
     else:
-        st.info("Henüz kayıtlı analiz bulunmamaktadır.")
-    if st.button("Geri Dön"): st.session_state.page = "Menu"; st.rerun()
+        st.info("Henüz kayıt yok.")
+    
+    if st.button("Geri"): st.session_state.page = "Menu"; st.rerun()
 
 elif st.session_state.page == "Menu":
     st.subheader(f"Hoşgeldiniz, {st.session_state.user_info['ad']}")
@@ -415,109 +464,134 @@ elif st.session_state.page == "Menu":
     create_card(c3, "Islaklık / Kuruluk", "💧", "Nem dengesi.", "btn_nem", "Test_Nem", st.session_state.results_nem)
     create_card(c4, "Çakra Enerjisi", "🌀", "Enerji merkezleri.", "btn_cakra", "Test_Cakra", st.session_state.results_cakra)
 
+elif st.session_state.page == "Test_Isi":
+    st.title("🔥 Isı Analizi (20 Soru)")
+    score, missing = render_questions_pro(SORULAR_ISI, "isi", st.session_state.submitted_isi)
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        if st.button("Kaydet", type="primary"):
+            st.session_state.submitted_isi = True
+            if not missing:
+                st.session_state.results_isi = calculate_result_isi(score)
+                st.session_state.scores["isi"] = score
+                st.success("Kaydedildi!"); time.sleep(0.5); st.session_state.page = "Menu"; st.rerun()
+            else: st.rerun()
+    with c2:
+        if st.button("İptal"): st.session_state.page = "Menu"; st.rerun()
+
+elif st.session_state.page == "Test_Nem":
+    st.title("💧 Nem Analizi (20 Soru)")
+    score, missing = render_questions_pro(SORULAR_NEM, "nem", st.session_state.submitted_nem)
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        if st.button("Kaydet", type="primary"):
+            st.session_state.submitted_nem = True
+            if not missing:
+                st.session_state.results_nem = calculate_result_nem(score)
+                st.session_state.scores["nem"] = score
+                st.success("Kaydedildi!"); time.sleep(0.5); st.session_state.page = "Menu"; st.rerun()
+            else: st.rerun()
+    with c2:
+        if st.button("İptal"): st.session_state.page = "Menu"; st.rerun()
+
+elif st.session_state.page == "Test_Genel":
+    st.title("🦁 Genel Mizaç Testi")
+    cevaplar = {}
+    missing_flag = False
+    
+    # Dictionary yapısı olduğu için özel render
+    for bolum, veri in SORULAR_GENEL_DETAYLI.items():
+        st.markdown(f'<div class="section-header">{bolum}</div>', unsafe_allow_html=True)
+        secenekler = list(veri["puanlar"].keys()); secenekler.sort(key=lambda x: veri["puanlar"][x])
+        
+        for i, soru in enumerate(veri["sorular"]):
+            key = f"genel_{bolum}_{i}"
+            val = st.session_state.get(key)
+            
+            box_class = "q-filled" if val else ("q-error" if st.session_state.submitted_genel else "q-default")
+            st.markdown(f"""<div class='q-box {box_class}'><div class='q-text'>{i+1}. {soru}</div></div>""", unsafe_allow_html=True)
+            
+            choice = st.radio(f"{key}_rd", secenekler, key=key, index=None, label_visibility="collapsed", horizontal=True)
+            
+            if choice: cevaplar[key] = choice
+            else: missing_flag = True
+
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        if st.button("Analizi Bitir", type="primary"):
+            st.session_state.submitted_genel = True
+            if missing_flag:
+                st.error("Lütfen eksik soruları tamamlayınız.")
+                st.rerun()
+            else:
+                mizac, skorlar, yuzdeler = genel_mizac_hesapla(cevaplar)
+                st.session_state.results_genel = mizac
+                st.session_state.genel_yuzdeler = yuzdeler
+                st.session_state.genel_skorlar = skorlar
+                
+                # DB KAYIT
+                analiz_ozeti = generate_deep_analysis(mizac, None, 0, 0)
+                save_to_db(st.session_state.user_info, "Mizaç", analiz_ozeti, yuzdeler)
+                
+                st.success("Mizaç analizi tamamlandı!"); time.sleep(1); st.session_state.page = "Menu"; st.rerun()
+    with c2:
+        if st.button("İptal"): st.session_state.page = "Menu"; st.rerun()
+
 elif st.session_state.page == "Test_Cakra":
     st.title("🌀 Çakra Enerji Analizi")
-    st.info("İfadeleri kendinize göre değerlendiriniz.")
+    st.info("Lütfen aşağıdaki durumları 1 (Hiç) ile 5 (Tamamen) arasında değerlendirin.")
     
     cevaplar_cakra = {}
     missing_count = 0
-    labels = ["Hiç Katılmıyorum", "Nadiren", "Bazen", "Sıklıkla", "Tamamen Katılıyorum"]
+    labels = ["1-Hiç Katılmıyorum", "2-Nadiren", "3-Bazen", "4-Sıklıkla", "5-Tamamen Katılıyorum"]
     
     for cakra, sorular in SORULAR_CAKRA.items():
         st.markdown(f'<div class="section-header">{cakra}</div>', unsafe_allow_html=True)
         for i, soru in enumerate(sorular):
             key = f"cakra_{cakra}_{i}"
             val = st.session_state.get(key)
-            css = "q-box q-filled" if val else ("q-box q-error" if st.session_state.submitted_cakra else "q-box q-default")
-            icon = "🔴 " if (st.session_state.submitted_cakra and not val) else ""
-            st.markdown(f"<div class='{css}'><div class='q-text'>{icon}{i+1}. {soru}</div></div>", unsafe_allow_html=True)
-            choice = st.radio(f"{cakra}_{i}", labels, key=key, horizontal=True, index=None, label_visibility="collapsed")
+            
+            # Dinamik CSS
+            box_class = "q-filled" if val else ("q-error" if st.session_state.submitted_cakra else "q-default")
+            
+            st.markdown(f"<div class='q-box {box_class}'><div class='q-text'>{i+1}. {soru}</div></div>", unsafe_allow_html=True)
+            
+            # Index=None ile boş gelmesini sağla
+            choice = st.radio(f"{key}_rd", labels, key=key, index=None, horizontal=True, label_visibility="collapsed")
+            
             if choice: cevaplar_cakra[key] = labels.index(choice) + 1
             else: missing_count += 1
 
     c1, c2 = st.columns([3, 1])
     with c1:
-        if st.button("Analizi Bitir ve Kaydet", type="primary", use_container_width=True):
+        if st.button("Analizi Bitir", type="primary"):
             st.session_state.submitted_cakra = True
             if missing_count > 0:
-                st.error("Lütfen tüm soruları cevaplayınız.")
+                st.error(f"{missing_count} adet boş soru var. Lütfen (Kırmızı) alanları doldurunuz.")
                 st.rerun()
             else:
                 st.session_state.results_cakra = calculate_cakra_results(cevaplar_cakra)
-                # VERİTABANI KAYDI
-                analiz_ozeti = generate_deep_analysis(st.session_state.results_genel, st.session_state.results_cakra)
+                # DB KAYIT
+                analiz_ozeti = generate_deep_analysis(st.session_state.results_genel, st.session_state.results_cakra, 0, 0)
                 save_to_db(st.session_state.user_info, "Çakra", analiz_ozeti, st.session_state.results_cakra)
-                st.success("Çakra analizi tamamlandı ve veritabanına kaydedildi!")
-                time.sleep(1)
-                st.session_state.page = "Menu"
-                st.rerun()
+                st.success("Kaydedildi!"); time.sleep(1); st.session_state.page = "Menu"; st.rerun()
     with c2:
-        if st.button("🏠 İptal / Menü", type="secondary", use_container_width=True):
-            st.session_state.page = "Menu"; st.rerun()
-
-elif st.session_state.page == "Test_Isi":
-    st.title("🔥 Isı Analizi")
-    score, missing = render_questions_with_validation(SORULAR_ISI, "isi", st.session_state.submitted_isi)
-    c1, c2 = st.columns([3, 1])
-    with c1:
-        if st.button("Kaydet", type="primary", use_container_width=True): 
-            st.session_state.submitted_isi = True; st.rerun()
-        if st.session_state.submitted_isi and not missing:
-            st.session_state.results_isi = calculate_result_isi(score)
-            st.session_state.page = "Menu"; st.rerun()
-    with c2:
-        if st.button("🏠 Menü", type="secondary", use_container_width=True):
-            st.session_state.page = "Menu"; st.rerun()
-
-elif st.session_state.page == "Test_Nem":
-    st.title("💧 Nem Analizi")
-    score, missing = render_questions_with_validation(SORULAR_NEM, "nem", st.session_state.submitted_nem)
-    c1, c2 = st.columns([3, 1])
-    with c1:
-        if st.button("Kaydet", type="primary", use_container_width=True): 
-            st.session_state.submitted_nem = True; st.rerun()
-        if st.session_state.submitted_nem and not missing:
-            st.session_state.results_nem = calculate_result_nem(score)
-            st.session_state.page = "Menu"; st.rerun()
-    with c2:
-        if st.button("🏠 Menü", type="secondary", use_container_width=True):
-            st.session_state.page = "Menu"; st.rerun()
-
-elif st.session_state.page == "Test_Genel":
-    st.title("🦁 Genel Mizaç")
-    cevaplar = {}
-    for bolum, veri in SORULAR_GENEL_DETAYLI.items():
-        st.markdown(f'<div class="section-header">{bolum}</div>', unsafe_allow_html=True)
-        secenekler = list(veri["puanlar"].keys()); secenekler.sort(key=lambda x: veri["puanlar"][x])
-        for i, soru in enumerate(veri["sorular"]):
-            key = f"genel_{bolum}_{i}"
-            st.markdown(f"<div class='q-box q-default'><div class='q-text'>{i+1}. {soru}</div></div>", unsafe_allow_html=True)
-            choice = st.radio(key, secenekler, key=key, horizontal=True, label_visibility="collapsed")
-            if choice: cevaplar[key] = choice
-
-    c1, c2 = st.columns([3, 1])
-    with c1:
-        if st.button("Kaydet ve Bitir", type="primary", use_container_width=True):
-            mizac, skorlar, yuzdeler = genel_mizac_hesapla(cevaplar)
-            st.session_state.results_genel = mizac
-            st.session_state.genel_yuzdeler = yuzdeler
-            # VERİTABANI KAYDI
-            analiz_ozeti = generate_deep_analysis(mizac, st.session_state.results_cakra)
-            save_to_db(st.session_state.user_info, "Mizaç", analiz_ozeti, yuzdeler)
-            st.session_state.page = "Menu"; st.rerun()
-    with c2:
-        if st.button("🏠 Menü", type="secondary", use_container_width=True):
-            st.session_state.page = "Menu"; st.rerun()
+        if st.button("İptal"): st.session_state.page = "Menu"; st.rerun()
 
 elif st.session_state.page == "Rapor":
     tarih = datetime.now().strftime("%d.%m.%Y")
     st.markdown(f"## 📄 Analiz Sonuçları: {st.session_state.user_info.get('ad')}")
     
-    # Derin Analiz Oluştur
-    derin_analiz = generate_deep_analysis(st.session_state.results_genel, st.session_state.results_cakra)
+    # 1. Derin Analiz Metni
+    derin_analiz = generate_deep_analysis(
+        st.session_state.results_genel, 
+        st.session_state.results_cakra,
+        st.session_state.scores.get("isi", 0),
+        st.session_state.scores.get("nem", 0)
+    )
     st.info(f"🧠 **Uzman Yorumu:** {derin_analiz}")
 
-    # ÇAKRA GRAFİĞİ
+    # 2. Çakra Grafiği (Sabit)
     fig_cakra_html = ""
     if st.session_state.results_cakra:
         data = st.session_state.results_cakra
@@ -526,52 +600,51 @@ elif st.session_state.page == "Rapor":
         asiri_vals = [d['asiri_puan'] for d in data.values()]
         
         fig_cakra = go.Figure()
-        fig_cakra.add_trace(go.Bar(x=cakra_names, y=yavas_vals, name='Blokaj/Yavaş', marker_color='#5DADE2', text=yavas_vals, textposition='auto'))
-        fig_cakra.add_trace(go.Bar(x=cakra_names, y=asiri_vals, name='Aşırı Aktif', marker_color='#EC7063', text=asiri_vals, textposition='auto'))
+        fig_cakra.add_trace(go.Bar(x=cakra_names, y=yavas_vals, name='Blokaj/Yavaş', marker_color='#5DADE2'))
+        fig_cakra.add_trace(go.Bar(x=cakra_names, y=asiri_vals, name='Aşırı Aktif', marker_color='#EC7063'))
         
-        # YEŞİL BANT & EŞİK
+        # Yeşil Bant
         fig_cakra.add_shape(type="rect", x0=-0.5, x1=len(cakra_names)-0.5, y0=20, y1=25, fillcolor="Green", opacity=0.15, layer="below", line_width=0)
+        # Kırmızı Eşik
         fig_cakra.add_shape(type="line", x0=-0.5, x1=len(cakra_names)-0.5, y0=30, y1=30, line=dict(color="red", width=2, dash="dot"))
         
-        fig_cakra.add_annotation(x=len(cakra_names)-1, y=22.5, text="DENGELİ (20-25)", showarrow=False, font=dict(size=10, color="green"), xanchor="right")
-        fig_cakra.add_annotation(x=len(cakra_names)-1, y=31, text="KRİTİK (30+)", showarrow=False, font=dict(size=10, color="red"), xanchor="right")
-        
-        fig_cakra.update_layout(barmode='group', title="Çakra Enerji Dengesi Analizi", height=450, margin=dict(t=50, b=50, l=40, r=40), plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(showgrid=True, gridcolor='lightgray', range=[0, 45]))
+        fig_cakra.update_layout(barmode='group', title="Çakra Enerji Dengesi", height=400, margin=dict(t=40, b=40, l=40, r=40), plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[0, 45]))
         
         fig_cakra_html = fig_cakra.to_html(full_html=False, include_plotlyjs='cdn', config=PLOTLY_CONFIG)
         st.plotly_chart(fig_cakra, use_container_width=True, config=PLOTLY_CONFIG)
         
+        # Detay Tablo
         df_cakra = pd.DataFrame.from_dict(data, orient='index')
-        st.markdown("### Çakra Durum Tablosu")
-        st.dataframe(df_cakra, use_container_width=True)
+        with st.expander("Detaylı Tabloyu Göster"):
+            st.dataframe(df_cakra)
 
-    # MİZAÇ GRAFİKLERİ
+    # 3. Mizaç Grafikleri
     fig1_html, fig2_html = "", ""
     if st.session_state.results_genel:
         yuzdeler = st.session_state.genel_yuzdeler
-        ordered_cats = ["SOĞUKLUK", "NEMLİLİK", "SICAKLIK", "KURULUK"]
-        ordered_vals = [yuzdeler.get(k, 0) for k in ordered_cats]
+        cats = ["SOĞUKLUK", "NEMLİLİK", "SICAKLIK", "KURULUK"]
+        vals = [yuzdeler.get(k, 0) for k in cats]
         
-        fig1 = go.Figure(go.Bar(x=ordered_cats, y=ordered_vals, marker_color=['#3498DB', '#2ECC71', '#E74C3C', '#F1C40F']))
-        fig1.update_layout(height=300, margin=dict(t=10, b=20, l=20, r=20))
+        c1, c2 = st.columns(2)
+        
+        fig1 = go.Figure(go.Bar(x=cats, y=vals, marker_color=['#3498DB', '#2ECC71', '#E74C3C', '#F1C40F']))
+        fig1.update_layout(height=300, margin=dict(t=10,b=10,l=10,r=10))
         fig1_html = fig1.to_html(full_html=False, include_plotlyjs='cdn', config=PLOTLY_CONFIG)
-        st.plotly_chart(fig1, use_container_width=True, config=PLOTLY_CONFIG)
+        with c1: st.plotly_chart(fig1, use_container_width=True, config=PLOTLY_CONFIG)
         
-        radar_cats = ordered_cats + [ordered_cats[0]]
-        radar_vals = ordered_vals + [ordered_vals[0]]
-        fig2 = go.Figure(go.Scatterpolar(r=radar_vals, theta=radar_cats, fill='toself', line=dict(color='#8E44AD', width=3)))
-        fig2.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), height=350, margin=dict(t=40, b=40, l=60, r=60))
+        fig2 = go.Figure(go.Scatterpolar(r=vals+[vals[0]], theta=cats+[cats[0]], fill='toself'))
+        fig2.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), height=300, margin=dict(t=20,b=20,l=30,r=30))
         fig2_html = fig2.to_html(full_html=False, include_plotlyjs='cdn', config=PLOTLY_CONFIG)
-        st.plotly_chart(fig2, use_container_width=True, config=PLOTLY_CONFIG)
+        with c2: st.plotly_chart(fig2, use_container_width=True, config=PLOTLY_CONFIG)
         
         st.info(f"Baskın Mizaç: **{st.session_state.results_genel}**")
-        
-    # RAPOR İNDİRME
+
+    # 4. Rapor İndirme
     if st.session_state.results_genel or st.session_state.results_cakra:
         detaylar = MIZAC_BILGILERI.get(st.session_state.results_genel, {}) if st.session_state.results_genel else {}
         mizac_adi = st.session_state.results_genel if st.session_state.results_genel else None
         
         report_html = create_html_report(st.session_state.user_info, mizac_adi, detaylar, tarih, fig1_html, fig2_html, fig_cakra_html, st.session_state.results_cakra, derin_analiz)
-        st.download_button("📥 Raporu İndir", data=report_html, file_name="Analiz.html", mime="text/html", type="primary", use_container_width=True)
+        st.download_button("📥 Tam Raporu İndir (HTML)", data=report_html, file_name=f"Analiz_{st.session_state.user_info.get('ad')}.html", mime="text/html", type="primary", use_container_width=True)
     
     if st.button("Menüye Dön"): st.session_state.page = "Menu"; st.rerun()
