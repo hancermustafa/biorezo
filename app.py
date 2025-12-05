@@ -16,9 +16,9 @@ st.set_page_config(page_title="Dr. Sait SEVİNÇ - Bütüncül Analiz", layout="
 
 # Plotly için Temiz Mod (Menüleri Gizle)
 PLOTLY_CONFIG = {
-    'displayModeBar': False,  # Üstteki menüyü gizle
-    'scrollZoom': False,      # Mouse tekerleği ile zoom'u kapat (mobilde kaydırmayı bozmasın)
-    'showTips': False         # İpuçlarını gizle
+    'displayModeBar': False,
+    'scrollZoom': False,
+    'showTips': False
 }
 
 # --- LOGO VE JSON YÜKLEME ---
@@ -53,7 +53,7 @@ def get_image_base64(path):
             return base64.b64encode(img_file.read()).decode()
     return None
 
-# --- HTML RAPOR OLUŞTURUCU (RESPONSIVE & TEMİZ) ---
+# --- HTML RAPOR OLUŞTURUCU (RESPONSIVE) ---
 def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, fig_cakra_html, cakra_sonuclar):
     img_data = get_image_base64(LOGO_LOCAL)
     img_src = f"data:image/jpeg;base64,{img_data}" if img_data else LOGO_URL
@@ -122,43 +122,30 @@ def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, 
         <title>Bütüncül Analiz Raporu</title>
         <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
         <style>
-            /* TEMEL AYARLAR */
             body {{ font-family: 'Helvetica', sans-serif; color: #333; padding: 20px; max-width: 900px; margin: auto; background-color: white; }}
-            
-            /* HEADER */
             .header {{ text-align: center; border-bottom: 2px solid #2c3e50; padding-bottom: 20px; margin-bottom: 30px; }}
             .logo {{ width: 100px; max-width: 100%; margin-bottom: 10px; }}
             h1 {{ color: #2c3e50; margin: 10px 0; font-size: 22px; }}
             .info {{ font-size: 1em; color: #555; margin-bottom: 30px; text-align: center; }}
-            
-            /* KUTULAR VE BÖLÜMLER */
             .result-box {{ background-color: #f0f8ff; border: 2px solid #3498db; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 30px; }}
             .result-title {{ font-size: 1.6em; color: #e74c3c; font-weight: bold; margin-top: 5px; }}
             .section {{ margin-bottom: 25px; }}
             .section h3 {{ border-left: 5px solid #1abc9c; padding-left: 10px; color: #16a085; background: #eefcf9; padding: 8px; margin-bottom: 10px; font-size: 1.1em; }}
             .content {{ padding: 0 5px; line-height: 1.5; font-size: 0.95em; }}
-            
-            /* GRAFİKLER - RESPONSIVE FLEX */
             .charts-container {{ display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; margin-bottom: 30px; }}
             .chart-box {{ flex: 1; min-width: 300px; border: 1px solid #eee; border-radius: 8px; padding: 10px; background: #fff; }}
             .full-width-chart {{ width: 100%; border: 1px solid #eee; border-radius: 8px; padding: 10px; background: #fff; margin-bottom: 30px; overflow-x: auto; }}
             .chart-title {{ text-align: center; font-weight: bold; margin-bottom: 5px; font-size: 0.9em; }}
-
-            /* TABLO */
             table {{ width: 100%; border-collapse: collapse; font-size: 0.9em; }}
             th, td {{ padding: 10px; border-bottom: 1px solid #eee; text-align: center; }}
             th {{ background-color: #f8f9fa; text-align: left; }}
             td:first-child {{ text-align: left; font-weight: bold; }}
-            
             .footer {{ margin-top: 40px; text-align: center; font-size: 0.7em; color: #999; border-top: 1px solid #eee; padding-top: 10px; }}
             
-            /* MOBİL UYUMLULUK (MEDIA QUERIES) */
             @media screen and (max-width: 768px) {{
                 body {{ padding: 10px; }}
                 h1 {{ font-size: 18px; }}
                 .chart-box {{ min-width: 100%; }}
-                
-                /* Mobilde Tabloyu Kart Görünümüne Çevir (Opsiyonel ama kullanışlı) */
                 .responsive-table thead {{ display: none; }}
                 .responsive-table tr {{ display: block; margin-bottom: 15px; border: 1px solid #eee; border-radius: 8px; padding: 10px; }}
                 .responsive-table td {{ display: flex; justify-content: space-between; text-align: right; border-bottom: none; padding: 5px 0; }}
@@ -197,7 +184,6 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
 
-    /* MENU KARTLARI */
     .menu-card {
         background: linear-gradient(145deg, #ffffff, #f0f2f5);
         padding: 20px; border-radius: 16px;
@@ -214,12 +200,10 @@ st.markdown("""
     .card-title { font-size: 1.1rem; font-weight: 700; color: #2c3e50; margin-bottom: 5px; }
     .card-desc { font-size: 0.85rem; color: #7f8c8d; }
 
-    /* MOBİL İÇİN KART DÜZENİ */
     @media (max-width: 768px) {
         .menu-card { height: auto; min-height: 160px; padding: 15px; margin-bottom: 10px; }
     }
 
-    /* SORU KUTULARI */
     .q-box { padding: 15px; border-radius: 10px; margin-bottom: 12px; transition: border 0.3s; }
     .q-default { background: #f8fbfe; border: 1px solid #dceefb; border-left: 4px solid #bdc3c7; }
     .q-filled { background: #fff; border: 1px solid #e0ffe8; border-left: 4px solid #2ecc71; }
@@ -235,16 +219,71 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. VERİ SETLERİ (Mizaç Soruları Özet)
+# 4. VERİ SETLERİ (TAM ORİJİNAL VERİLER)
 # ==========================================
-SORULAR_ISI = [{"text": "Vücut ısınız genel olarak nasıldır?", "options": [{"text": "Çok üşürüm", "value": 1}, {"text": "Çok sıcağım", "value": 5}]}] * 5 
-SORULAR_NEM = [{"text": "Cilt yapınız nasıldır?", "options": [{"text": "Çok nemli", "value": 1}, {"text": "Çok kuru", "value": 5}]}] * 5
+SORULAR_ISI = [
+    {"text": "Boş vakitlerinizde ne yaparsınız?", "options": [{"text": "Evde zaman geçirmek", "value": 1}, {"text": "Çoğunlukla evde", "value": 2}, {"text": "Bazen evde bezen dışarda", "value": 3}, {"text": "Genellikle dışarda", "value": 4}, {"text": "Evin dışında", "value": 5}]},
+    {"text": "Düzene karşı tutumunuz?", "options": [{"text": "Her zaman temiz ve düzenliyim", "value": 1}, {"text": "Çoğunlukla düzenli", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Dağınıklığı sevmem ama yapmam", "value": 4}, {"text": "Dağınık ama bulurum", "value": 5}]},
+    {"text": "Paraya karşı tutumunuz?", "options": [{"text": "Genellikle tutumluyum", "value": 1}, {"text": "Gerektiği kadar", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Ailem için", "value": 4}, {"text": "Para harcamayı severim", "value": 5}]},
+    {"text": "Genel ruhsal durumunuz?", "options": [{"text": "Keyifsiz", "value": 1}, {"text": "Kaygılı", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Keyifli", "value": 4}, {"text": "Mutlu", "value": 5}]},
+    {"text": "Nasıl yürürsünüz?", "options": [{"text": "Çok Yavaş", "value": 1}, {"text": "Yavaş", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Hızlı", "value": 4}, {"text": "Çok Hızlı", "value": 5}]},
+    {"text": "Yeni bir ortama girdiğinizde?", "options": [{"text": "Çok az konuşurum", "value": 1}, {"text": "Soru sorulursa", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Konuşkanım", "value": 4}, {"text": "Çok konuşurum", "value": 5}]},
+    {"text": "Yeni tanıştığınız insanlara tavrınız?", "options": [{"text": "Çekimser", "value": 1}, {"text": "Mesafeli", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Temkinli ılıman", "value": 4}, {"text": "Samimi", "value": 5}]},
+    {"text": "Arkadaş çevreniz nasıl?", "options": [{"text": "Yok denecek kadar az", "value": 1}, {"text": "Çok Az", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Fazla", "value": 4}, {"text": "Geniş çevre", "value": 5}]},
+    {"text": "Ses tonunuz nasıl?", "options": [{"text": "Çok sakin/yumuşak", "value": 1}, {"text": "Sakin", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Hızlı / Yüksek", "value": 4}, {"text": "Çok Yüksek", "value": 5}]},
+    {"text": "Karar alma süreciniz?", "options": [{"text": "Çok yavaş", "value": 1}, {"text": "Yavaş-Kararsız", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Hızlı", "value": 4}, {"text": "Çok Hızlı", "value": 5}]},
+    {"text": "Günlük enerji seviyeniz?", "options": [{"text": "Çok düşük", "value": 1}, {"text": "Düşük", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Yüksek", "value": 4}, {"text": "Çok Yüksek", "value": 5}]},
+    {"text": "Konuşma hızınız?", "options": [{"text": "Tane tane", "value": 1}, {"text": "Akıcı", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Hızlı", "value": 4}, {"text": "Çok Hızlı", "value": 5}]},
+    {"text": "Cesaret durumunuz?", "options": [{"text": "Hiç", "value": 1}, {"text": "Çok az", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Cesur", "value": 4}, {"text": "Çok Cesur", "value": 5}]},
+    {"text": "Gün içindeki düşünceleriniz?", "options": [{"text": "Geçmiş/Negatif", "value": 1}, {"text": "Karamsar", "value": 2}, {"text": "İnişli çıkışlı", "value": 3}, {"text": "İş/Gelecek", "value": 4}, {"text": "Pozitif", "value": 5}]},
+    {"text": "Enerjinizin yüksek olduğu saat?", "options": [{"text": "Öğle", "value": 1}, {"text": "Sabah", "value": 2}, {"text": "Belirsiz", "value": 3}, {"text": "Akşam", "value": 4}, {"text": "Gece", "value": 5}]},
+    {"text": "Enerjinizin düşük olduğu saat?", "options": [{"text": "Gece", "value": 1}, {"text": "Akşam", "value": 2}, {"text": "Belirsiz", "value": 3}, {"text": "Öğle", "value": 4}, {"text": "Sabah", "value": 5}]},
+    {"text": "Kurallara riayet?", "options": [{"text": "Çok fazla", "value": 1}, {"text": "Fazla", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Az", "value": 4}, {"text": "Çok az", "value": 5}]},
+    {"text": "İçsel diyalog (Takıntı)?", "options": [{"text": "Çok fazla", "value": 1}, {"text": "Fazla", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Az", "value": 4}, {"text": "Çok az", "value": 5}]},
+    {"text": "Sindirim sistemi çalışması?", "options": [{"text": "Çok zayıf", "value": 1}, {"text": "Zayıf", "value": 2}, {"text": "Orta", "value": 3}, {"text": "İyi", "value": 4}, {"text": "Çok iyi", "value": 5}]},
+    {"text": "Su tüketimi isteği?", "options": [{"text": "Çok az/aklıma gelmez", "value": 1}, {"text": "Az", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Çok susarım", "value": 4}, {"text": "Sürekli susarım", "value": 5}]}
+]
+
+SORULAR_NEM = [
+    {"text": "Uyku ile ilişkiniz?", "options": [{"text": "Gözümü açamam", "value": 1}, {"text": "Uykuyu severim", "value": 2}, {"text": "Normal", "value": 3}, {"text": "Az uyurum", "value": 4}, {"text": "Çok az uyurum", "value": 5}]},
+    {"text": "Vücut yapınız?", "options": [{"text": "Çok yağlı/kilolu", "value": 1}, {"text": "Yağlı/meyilli", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Zayıf", "value": 4}, {"text": "Çok zayıf", "value": 5}]},
+    {"text": "Ten renginiz?", "options": [{"text": "Çok beyaz", "value": 1}, {"text": "Beyaz/Buğday", "value": 2}, {"text": "Normal", "value": 3}, {"text": "Buğday", "value": 4}, {"text": "Koyu", "value": 5}]},
+    {"text": "Kilo alma eğilimi?", "options": [{"text": "Çok fazla", "value": 1}, {"text": "Fazla", "value": 2}, {"text": "Normal", "value": 3}, {"text": "Az", "value": 4}, {"text": "Çok az", "value": 5}]},
+    {"text": "Saç gürlüğü?", "options": [{"text": "Çok Seyrek", "value": 1}, {"text": "Seyrek", "value": 2}, {"text": "Normal", "value": 3}, {"text": "Gür", "value": 4}, {"text": "Çok Gür/Kıvırcık", "value": 5}]},
+    {"text": "Sabah ağız tadı?", "options": [{"text": "Tatlı", "value": 1}, {"text": "Buruk/Tatsız", "value": 2}, {"text": "Normal", "value": 3}, {"text": "Acımtırak", "value": 4}, {"text": "Ekşi/Tuzlu", "value": 5}]},
+    {"text": "Salya/Burun akıntısı?", "options": [{"text": "Çok", "value": 1}, {"text": "Nemli", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Az", "value": 4}, {"text": "Kuru", "value": 5}]},
+    {"text": "Hafıza?", "options": [{"text": "Unutkanım", "value": 1}, {"text": "Çabuk öğrenir/unuturum", "value": 2}, {"text": "Normal", "value": 3}, {"text": "İyidir", "value": 4}, {"text": "Çok kuvvetli", "value": 5}]},
+    {"text": "Cilt yapısı (Dokunuş)?", "options": [{"text": "Çok yumuşak", "value": 1}, {"text": "Yumuşak", "value": 2}, {"text": "Normal", "value": 3}, {"text": "Kuru", "value": 4}, {"text": "Çok kuru/çatlar", "value": 5}]},
+    {"text": "Uyum sağlama?", "options": [{"text": "Başkaları uyar", "value": 1}, {"text": "Esnek/Uyumlu", "value": 2}, {"text": "Normal", "value": 3}, {"text": "Uyumsuzum", "value": 4}, {"text": "Çevrem bana uyar", "value": 5}]},
+    {"text": "Yüz hatları?", "options": [{"text": "Yuvarlak/Etli", "value": 1}, {"text": "Hafif yuvarlak", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Belirgin kemikli", "value": 4}, {"text": "Çok belirgin kemikli", "value": 5}]},
+    {"text": "İştah durumu?", "options": [{"text": "Çok iştahlı", "value": 1}, {"text": "İştahlı", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Az iştahlı", "value": 4}, {"text": "İştahsız", "value": 5}]},
+    {"text": "İfrazat/Akciğer doluluğu?", "options": [{"text": "Çok olur", "value": 1}, {"text": "Genelde var", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Az olur", "value": 4}, {"text": "Çok az", "value": 5}]},
+    {"text": "Saç uzama/yapı?", "options": [{"text": "Yumuşak/Yavaş uzar", "value": 1}, {"text": "Yumuşak/Hızlı", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Kuru/Yavaş", "value": 4}, {"text": "Kuru/Hızlı/Kıvırcık", "value": 5}]},
+    {"text": "Öfke/Reaksiyon süresi?", "options": [{"text": "Yavaş öfkelenirim", "value": 1}, {"text": "Çabuk öfke/Çabuk geçer", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Az öfke/Geçmez", "value": 4}, {"text": "Çok öfke/Kalıcı", "value": 5}]},
+    {"text": "Ağız suyu?", "options": [{"text": "Çok olur", "value": 1}, {"text": "Koyu/Kıvamlı", "value": 2}, {"text": "Normal", "value": 3}, {"text": "Az", "value": 4}, {"text": "Kuru", "value": 5}]},
+    {"text": "Burun yapısı?", "options": [{"text": "Geniş/Etli", "value": 1}, {"text": "Geniş", "value": 2}, {"text": "Orta", "value": 3}, {"text": "İnce", "value": 4}, {"text": "Çok İnce", "value": 5}]},
+    {"text": "Cilt tipi?", "options": [{"text": "Yağlı", "value": 1}, {"text": "Nemli", "value": 2}, {"text": "Karma", "value": 3}, {"text": "Kuru", "value": 4}, {"text": "Çok Kuru", "value": 5}]},
+    {"text": "Avuç yapısı?", "options": [{"text": "Geniş/Kısa parmak", "value": 1}, {"text": "İri/Etli", "value": 2}, {"text": "Normal", "value": 3}, {"text": "Dengeli", "value": 4}, {"text": "İnce/Uzun", "value": 5}]},
+    {"text": "Kaşıntı/Egzama?", "options": [{"text": "Yoktur", "value": 1}, {"text": "Çok az", "value": 2}, {"text": "Nadiren", "value": 3}, {"text": "Genelde olur", "value": 4}, {"text": "Çok olur", "value": 5}]}
+]
 
 SORULAR_GENEL_DETAYLI = {
-    "SICAKLIK": {"puanlar": {"Hayır": 1, "Orta": 2, "Evet": 3}, "sorular": ["Hareketli misiniz?", "Öfkeniz hızlı mı?", "Sıcağı sever misiniz?"]},
-    "SOĞUKLUK": {"puanlar": {"Hayır": 1, "Orta": 2, "Evet": 3}, "sorular": ["Sakin misiniz?", "Üşümeyi sever misiniz?", "Yavaş hareket eder misiniz?"]},
-    "NEMLİLİK": {"puanlar": {"Hayır": 1, "Orta": 2, "Evet": 3}, "sorular": ["Uykuyu sever misiniz?", "Kilo almaya müsait misiniz?", "Cildiniz yumuşak mı?"]},
-    "KURULUK":  {"puanlar": {"Hayır": 1, "Orta": 2, "Evet": 3}, "sorular": ["Cildiniz kuru mu?", "Zayıf mısınız?", "Uykunuz hafif mi?"]}
+    "SICAKLIK": {
+        "puanlar": {"Hayır": 1, "Orta derece": 2, "Kesinlikle evet": 3},
+        "sorular": ["Arkadaş çevrem geniş sosyal biriyim", "Hızlı düşünür çabuk harekete geçerim", "Konuşkan sıcakkanlı bir yapım var", "Soğuk havaları severim", "Soğuk yiyecek içeceklerden hoşlanırım", "Vücudum sıcaktır", "Takıntılı değilim", "Cesur ve atak biriyim", "Çok detaylı düşünmem", "Kabızlık sorunu çok fazla yaşamam", "Rutin / tekdüze sakin yaşamdan pek sevmem", "Pozitifim", "Kuralları çok sevmem", "Sonuç odaklıyım", "Lider bir ruhum var", "Genelde enerjik bir yapım var", "Yapılanı unuturum kin tutamam", "Sır saklamakta zorlanırım anlatma eğilimim vardır"]
+    },
+    "SOĞUKLUK": {
+        "puanlar": {"Hayır": 1, "Orta derece": 2, "Kesinlikle evet": 3},
+        "sorular": ["Çok geniş bir çevrem yok", "Temkinli biriyim", "Hemen samimi olmam, seçiciyim", "Sıcak havaları severim", "Sıcak yiyecek ve içeceklerden hoşlanırım", "Vücudum soğuktur üşürüm", "Takıntılıyım", "Hassas ve alıngan biriyim", "Aceleyi sevmem işimi sağlam yavaş yavaş yaparım", "Kabızlık sorunu çok yaşarım", "Sakin yaşam severim", "Karamsarım", "Kurallara uyarım", "Süreç odaklıyım", "İyi bir takım oyuncusuyum", "Genelde enerjim düşüktür (çabuk yorulurum)", "Negatifi unutmam", "Sır saklarım"]
+    },
+    "KURULUK": {
+        "puanlar": {"Hayır": 0, "Orta derece": 2, "Kesinlikle evet": 3},
+        "sorular": ["Saçlarım kalın telli", "Zayıf ince yapılıyım", "Cildim genelde kuru", "Cilt lekelerim vardır lekelenmeye müsaittir", "Çok uyuyamam derin değildir uyanırım hemen", "Sıkı ve gergin bir cildim var", "Göz yapım küçüktür", "Belim nispeten incedir", "Hafızam kuvvetlidir", "Duyularım gelişmiştir duyma/ koku alma", "Esnek biri değilim uyum sağlamam zordur", "Eklemlerim çıkıntılı", "Tenim daha sarı ve koyu renkte", "Tırnaklarım serttir", "Çabuk pes etmem ısrarcıyım", "Genelde burun akıntım çok az olur", "Kaşıntı egzemaya yatkınlığım fazladır", "Ağız kuruluğum fazladır"]
+    },
+    "NEMLİLİK": {
+        "puanlar": {"Hayır": 0, "Orta derece": 1, "Kesinlikle evet": 2},
+        "sorular": ["Saçlarım ince telli", "Kiloluyum", "Cildim yumuşaktır", "Uykuyu severim derin uyurum", "Çok az cilt lekelerim var", "Cildim yumuşak ve esnektir", "Göz yapım iri ve nemlidir", "Belim nispeten kalındır", "Hafızam kuvvetli değil tekrarlamazsam çabuk unuturum", "Duyularım zayıftır koku alma/işitme", "Esnek biriyim uyum sağlarım", "Eklemlerim, hatlarım belirgin değildir", "Yuvarlak yüzlüyüm", "Tırnak yapım yumuşaktır", "Çabuk pes ederim bıkarım", "Burun akıntım olur", "Egzema ve kaşıntı çok nadir görülür", "Ağız kuruluğum yoktur sulu ve yoğun olabilir"]
+    }
 }
 
 SORULAR_CAKRA = {
