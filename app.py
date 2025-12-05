@@ -1,117 +1,121 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import streamlit.components.v1 as components
+import sqlite3
 from datetime import datetime
 import time
-import random
 import os
 import json
 import base64
 
 # ==========================================
-# 1. AYARLAR VE YARDIMCI FONKSİYONLAR
+# 1. AYARLAR VE VERİTABANI BAĞLANTISI
 # ==========================================
-st.set_page_config(page_title="Dr. Sait SEVİNÇ - Bütüncül Analiz", layout="wide", page_icon="🧘")
+st.set_page_config(page_title="Dr. Sait SEVİNÇ - Pro Analiz", layout="wide", page_icon="🧬")
 
-# Plotly için Temiz Mod (Menüleri Gizle)
+# Grafik Ayarları (Mobilde bozulmayı önler, statik yapar)
 PLOTLY_CONFIG = {
-    'displayModeBar': False,
-    'scrollZoom': False,
+    'staticPlot': True,       # Grafiği resim gibi dondurur (Mobilde kaydırmayı düzeltir)
+    'displayModeBar': False,  # Menü çubuğunu gizler
     'showTips': False
 }
 
-# --- LOGO VE JSON YÜKLEME ---
+# Veritabanı Kurulumu (SQLite)
+def init_db():
+    conn = sqlite3.connect('analiz_gecmisi.db', check_same_thread=False)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS sonuclar
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  ad TEXT, yas INTEGER, tarih TEXT, 
+                  tip TEXT, ozet TEXT, detay_json TEXT)''')
+    conn.commit()
+    return conn
+
+CONN = init_db()
+
+# --- LOGO VE VERİ YÜKLEME ---
 @st.cache_data
 def load_resources():
     logo_path = "drsaitlogo.jpeg"
     default_logo = "https://i.ibb.co/xJc52gL/image-0.png"
-    
-    # Varsayılan Mizaç Bilgileri
+    # Mizaç Bilgileri (Kütüphane)
     default_json = {
-        "Safravi": {"Genel": "Sıcak-Kuru mizaç. Enerjik ve lider ruhlu.", "Beslenme": "Serinletici gıdalar tüketin (Salatalık, marul).", "Riskler": ["Migren", "Safra Kesesi", "Cilt Kuruluğu"]},
-        "Demevi": {"Genel": "Sıcak-Nemli mizaç. Sosyal ve neşeli.", "Beslenme": "Az ve sık yiyin, kırmızı eti azaltın.", "Riskler": ["Yüksek Tansiyon", "Kalp", "Sivilce"]},
-        "Balgami": {"Genel": "Soğuk-Nemli mizaç. Sakin ve uyumlu.", "Beslenme": "Isıtıcı baharatlar (Zencefil, kekik) kullanın.", "Riskler": ["Obezite", "Romatizma", "Unutkanlık"]},
-        "Sovdavi": {"Genel": "Soğuk-Kuru mizaç. Detaycı ve planlı.", "Beslenme": "Nemlendirici ve sıcak gıdalar tüketin.", "Riskler": ["Depresyon", "Varis", "Kabızlık"]}
+        "Safravi": {"Genel": "Sıcak-Kuru mizaç. Ateş elementi. Lider, hızlı ve öfkelidir.", "Beslenme": "Serinletici ve nemlendirici gıdalar (Salatalık, marul, yoğurt).", "Riskler": ["Migren", "Safra Taşları", "Cilt Kuruluğu", "Uykusuzluk"]},
+        "Demevi": {"Genel": "Sıcak-Nemli mizaç. Hava elementi. Sosyal, neşeli ve rahattır.", "Beslenme": "Kuru ve serin gıdalar. Kırmızı eti azaltın.", "Riskler": ["Yüksek Tansiyon", "Kalp Sorunları", "Sivilce/Akne"]},
+        "Balgami": {"Genel": "Soğuk-Nemli mizaç. Su elementi. Sakin, uyumlu ve yavaştır.", "Beslenme": "Isıtıcı ve kurutucu baharatlar (Zencefil, kekik, tarçın).", "Riskler": ["Obezite", "Romatizma", "Unutkanlık", "Ödem"]},
+        "Sovdavi": {"Genel": "Soğuk-Kuru mizaç. Toprak elementi. Detaycı, planlı ve içe dönük.", "Beslenme": "Isıtıcı ve nemlendirici gıdalar (Et suyu, tereyağı).", "Riskler": ["Depresyon", "Varis", "Kabızlık", "Kuruntu"]}
     }
-    
-    data = default_json
-    if os.path.exists("mizac_kutuphanesi.json"):
-        try:
-            with open("mizac_kutuphanesi.json", "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except: pass
-            
-    return logo_path, default_logo, data
+    return logo_path, default_logo, default_json
 
 LOGO_LOCAL, LOGO_URL, MIZAC_BILGILERI = load_resources()
 
-# --- RESMİ HTML İÇİN BASE64'E ÇEVİRME ---
+# ==========================================
+# 2. DERİN ANALİZ MOTORU (YENİ 🔥)
+# ==========================================
+def generate_deep_analysis(mizac, cakra_sonuclar):
+    yorumlar = []
+    
+    # 1. Mizaç Bazlı Derin Yorum
+    if mizac == "Safravi":
+        yorumlar.append("🔥 **Ateş Elementi Baskın:** Vücudunuzda ısı ve kuruluk hakim. Bu durum öfke kontrol sorunlarına ve inflamasyona (iltihap) yatkınlık oluşturabilir. Serinlemeniz hayati önem taşır.")
+    elif mizac == "Balgami":
+        yorumlar.append("💧 **Su Elementi Baskın:** Metabolizmanız yavaşlamaya meyilli. Hareketsizlik sizin en büyük düşmanınızdır. Isıtıcı gıdalarla sindirim ateşini yükseltmelisiniz.")
+    
+    # 2. Çakra & Mizaç Kombinasyonu (Çapraz Analiz)
+    if cakra_sonuclar:
+        kok = cakra_sonuclar.get("KÖK ÇAKRA (Muladhara)", {}).get("durum")
+        if kok and ("Yavaş" in kok or "Blokaj" in kok) and mizac == "Sovdavi":
+            yorumlar.append("⚠️ **Kritik Uyarı:** Toprak elementi mizacınız (Sovdavi) ile Kök Çakra blokajınız birleşmiş. Bu, aşırı gelecek kaygısı ve 'köksüzlük' hissi yaratabilir. Doğada yalın ayak yürümek sizin için en iyi ilaçtır.")
+        
+        solar = cakra_sonuclar.get("SOLAR PLEXUS (Manipura)", {}).get("durum")
+        if solar and "Aşırı" in solar and mizac == "Safravi":
+            yorumlar.append("⚠️ **Kritik Uyarı:** Ateş mizacınız ile 'Ateş Çakrası' (Solar Plexus) aynı anda yüksek çalışıyor. Mide asidi, ülser ve tükenmişlik sendromuna çok açıksınız. Rekabetten uzak durun.")
+
+    if not yorumlar:
+        yorumlar.append("✅ Genel dengeniz makul görünüyor. Mevcut yaşam tarzınızı koruyarak, mevsimsel beslenmeye dikkat ediniz.")
+        
+    return " ".join(yorumlar)
+
+# ==========================================
+# 3. VERİTABANI İŞLEMLERİ
+# ==========================================
+def save_to_db(user_info, test_type, summary_text, detail_data):
+    try:
+        c = CONN.cursor()
+        tarih = datetime.now().strftime("%Y-%m-%d %H:%M")
+        detail_json = json.dumps(detail_data, ensure_ascii=False)
+        c.execute("INSERT INTO sonuclar (ad, yas, tarih, tip, ozet, detail_json) VALUES (?, ?, ?, ?, ?, ?)",
+                  (user_info['ad'], user_info['yas'], tarih, test_type, summary_text, detail_json))
+        CONN.commit()
+        st.toast("✅ Sonuçlar Veritabanına Kaydedildi!")
+    except Exception as e:
+        st.error(f"Kayıt Hatası: {e}")
+
+def get_history():
+    c = CONN.cursor()
+    c.execute("SELECT id, ad, yas, tarih, tip, ozet FROM sonuclar ORDER BY id DESC")
+    return c.fetchall()
+
+# ==========================================
+# 4. GRAFİK VE HTML FONKSİYONLARI
+# ==========================================
 def get_image_base64(path):
     if os.path.exists(path):
         with open(path, "rb") as img_file:
             return base64.b64encode(img_file.read()).decode()
     return None
 
-# --- HTML RAPOR OLUŞTURUCU (RESPONSIVE) ---
-def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, fig_cakra_html, cakra_sonuclar):
+def create_html_report(user_info, mizac, detaylar, tarih, fig_cakra_html, cakra_sonuclar, derin_analiz):
     img_data = get_image_base64(LOGO_LOCAL)
     img_src = f"data:image/jpeg;base64,{img_data}" if img_data else LOGO_URL
     
-    mizac_display = mizac if mizac else "Henüz Belirlenmedi"
-    detaylar = detaylar if detaylar else {}
-    
-    risk_html = ""
-    if "Riskler" in detaylar:
-        for r in detaylar["Riskler"]:
-            risk_html += f"<li>{r}</li>"
-
     # Çakra Tablosu
     cakra_rows = ""
     if cakra_sonuclar:
         for cakra, degerler in cakra_sonuclar.items():
             durum = degerler['durum']
-            if durum == "Dengeli": status_color = "#2ecc71"
-            elif "Hafif" in durum: status_color = "#f39c12"
-            else: status_color = "#e74c3c"
-            
-            cakra_rows += f"""
-            <tr>
-                <td data-label="Çakra"><strong>{cakra}</strong></td>
-                <td data-label="Yavaşlık">{degerler['yavas_puan']}</td>
-                <td data-label="Aşırılık">{degerler['asiri_puan']}</td>
-                <td data-label="Durum" style="color:{status_color}; font-weight:bold;">{durum}</td>
-            </tr>
-            """
-        
-    cakra_section_html = f"""
-    <div class="section page-break">
-        <h3>🌀 Çakra Enerji Analizi</h3>
-        <div class="full-width-chart">{fig_cakra_html}</div>
-        <div class="content">
-            <table class="responsive-table">
-                <thead>
-                    <tr><th>Çakra</th><th>Yavaşlık Puanı</th><th>Aşırılık Puanı</th><th>Durum</th></tr>
-                </thead>
-                <tbody>{cakra_rows}</tbody>
-            </table>
-        </div>
-    </div>
-    """ if cakra_sonuclar else ""
-
-    mizac_section_html = f"""
-    <div class="result-box">
-        <div>Baskın Mizaç</div>
-        <div class="result-title">{mizac_display}</div>
-    </div>
-    <div class="charts-container">
-        <div class="chart-box"><div class="chart-title">Mizaç Dağılımı</div>{fig1_html}</div>
-        <div class="chart-box"><div class="chart-title">Mizaç Dengesi</div>{fig2_html}</div>
-    </div>
-    <div class="section"><h3>💡 Mizaç Özellikleri</h3><div class="content">{detaylar.get('Genel', '-')}</div></div>
-    <div class="section"><h3>🥗 Beslenme Tavsiyeleri</h3><div class="content">{detaylar.get('Beslenme', '-')}</div></div>
-    <div class="section"><h3>⚠️ Olası Yatkınlıklar</h3><div class="content"><ul>{risk_html}</ul></div></div>
-    """ if mizac else "<div class='result-box'>Mizaç analizi yapılmadı.</div>"
+            color = "#2ecc71" if "Dengeli" in durum else ("#f39c12" if "Hafif" in durum else "#e74c3c")
+            cakra_rows += f"<tr><td><strong>{cakra}</strong></td><td>{degerler['yavas_puan']}</td><td>{degerler['asiri_puan']}</td><td style='color:{color}'><strong>{durum}</strong></td></tr>"
 
     html = f"""
     <!DOCTYPE html>
@@ -119,107 +123,43 @@ def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, 
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Bütüncül Analiz Raporu</title>
+        <title>Analiz Raporu</title>
         <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
         <style>
-            body {{ font-family: 'Helvetica', sans-serif; color: #333; padding: 20px; max-width: 900px; margin: auto; background-color: white; }}
-            .header {{ text-align: center; border-bottom: 2px solid #2c3e50; padding-bottom: 20px; margin-bottom: 30px; }}
-            .logo {{ width: 100px; max-width: 100%; margin-bottom: 10px; }}
-            h1 {{ color: #2c3e50; margin: 10px 0; font-size: 22px; }}
-            .info {{ font-size: 1em; color: #555; margin-bottom: 30px; text-align: center; }}
-            .result-box {{ background-color: #f0f8ff; border: 2px solid #3498db; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 30px; }}
-            .result-title {{ font-size: 1.6em; color: #e74c3c; font-weight: bold; margin-top: 5px; }}
-            .section {{ margin-bottom: 25px; }}
-            .section h3 {{ border-left: 5px solid #1abc9c; padding-left: 10px; color: #16a085; background: #eefcf9; padding: 8px; margin-bottom: 10px; font-size: 1.1em; }}
-            .content {{ padding: 0 5px; line-height: 1.5; font-size: 0.95em; }}
-            .charts-container {{ display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; margin-bottom: 30px; }}
-            .chart-box {{ flex: 1; min-width: 300px; border: 1px solid #eee; border-radius: 8px; padding: 10px; background: #fff; }}
-            .full-width-chart {{ width: 100%; border: 1px solid #eee; border-radius: 8px; padding: 10px; background: #fff; margin-bottom: 30px; overflow-x: auto; }}
-            .chart-title {{ text-align: center; font-weight: bold; margin-bottom: 5px; font-size: 0.9em; }}
+            body {{ font-family: sans-serif; color: #333; padding: 20px; max-width: 800px; margin: auto; }}
+            .header {{ text-align: center; border-bottom: 2px solid #333; margin-bottom: 20px; }}
+            .logo {{ width: 80px; }}
+            .box {{ border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 20px; background: #f9f9f9; }}
+            .deep-analysis {{ background-color: #e8f4f8; border-left: 5px solid #3498db; padding: 15px; margin: 20px 0; }}
             table {{ width: 100%; border-collapse: collapse; font-size: 0.9em; }}
-            th, td {{ padding: 10px; border-bottom: 1px solid #eee; text-align: center; }}
-            th {{ background-color: #f8f9fa; text-align: left; }}
-            td:first-child {{ text-align: left; font-weight: bold; }}
-            .footer {{ margin-top: 40px; text-align: center; font-size: 0.7em; color: #999; border-top: 1px solid #eee; padding-top: 10px; }}
-            
-            @media screen and (max-width: 768px) {{
-                body {{ padding: 10px; }}
-                h1 {{ font-size: 18px; }}
-                .chart-box {{ min-width: 100%; }}
-                .responsive-table thead {{ display: none; }}
-                .responsive-table tr {{ display: block; margin-bottom: 15px; border: 1px solid #eee; border-radius: 8px; padding: 10px; }}
-                .responsive-table td {{ display: flex; justify-content: space-between; text-align: right; border-bottom: none; padding: 5px 0; }}
-                .responsive-table td:before {{ content: attr(data-label); font-weight: bold; text-align: left; color: #666; }}
-                .responsive-table td:first-child {{ text-align: right; }}
-            }}
-            
-            @media print {{
-                .page-break {{ page-break-before: always; }}
-                .charts-container {{ display: block; }}
-                .chart-box {{ width: 100%; margin-bottom: 20px; page-break-inside: avoid; }}
-            }}
+            th, td {{ padding: 8px; border-bottom: 1px solid #ddd; text-align: center; }}
+            td:first-child {{ text-align: left; }}
         </style>
     </head>
     <body>
         <div class="header">
             <img src="{img_src}" class="logo">
-            <h1>BÜTÜNCÜL SAĞLIK RAPORU</h1>
-            <div class="info">{user_info.get('ad')} | {user_info.get('yas')} Yaş | {tarih}</div>
+            <h2>BÜTÜNCÜL SAĞLIK RAPORU</h2>
+            <p>{user_info.get('ad')} | {user_info.get('yas')} Yaş | {tarih}</p>
         </div>
         
-        {mizac_section_html}
-        {cakra_section_html}
+        <div class="deep-analysis">
+            <h3>🧠 Uzman Yorumu & Derin Analiz</h3>
+            <p>{derin_analiz}</p>
+        </div>
 
-        <div class="footer">Bu rapor Dr. Sait SEVİNÇ Analiz Sistemi tarafından oluşturulmuştur.</div>
+        {'<div class="box"><h3>🦁 Baskın Mizaç: ' + mizac + '</h3><p>' + detaylar.get('Genel','') + '</p></div>' if mizac else ''}
+        
+        {'<div class="box"><h3>🌀 Çakra Analizi</h3>' + fig_cakra_html + '<table><tr><th>Çakra</th><th>Blokaj</th><th>Aşırı</th><th>Durum</th></tr>' + cakra_rows + '</table></div>' if cakra_sonuclar else ''}
+        
+        <div style="text-align:center; font-size:0.8em; color:#999; margin-top:30px;">Dr. Sait SEVİNÇ Analiz Sistemi</div>
     </body>
     </html>
     """
     return html
 
 # ==========================================
-# 🎨 CSS
-# ==========================================
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
-    html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
-
-    .menu-card {
-        background: linear-gradient(145deg, #ffffff, #f0f2f5);
-        padding: 20px; border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-        text-align: center; border: 1px solid rgba(255,255,255,0.8);
-        height: 200px; display: flex; flex-direction: column;
-        justify-content: center; align-items: center;
-        transition: all 0.3s ease; position: relative;
-    }
-    .menu-card:hover { transform: translateY(-3px); border-color: #3498db; }
-    .card-done { border: 2px solid #2ecc71 !important; background: #f0fff4 !important; }
-    .status-badge { background-color: #2ecc71; color: white; padding: 2px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: bold; margin-bottom: 5px; }
-    .card-icon { font-size: 36px; margin-bottom: 8px; }
-    .card-title { font-size: 1.1rem; font-weight: 700; color: #2c3e50; margin-bottom: 5px; }
-    .card-desc { font-size: 0.85rem; color: #7f8c8d; }
-
-    @media (max-width: 768px) {
-        .menu-card { height: auto; min-height: 160px; padding: 15px; margin-bottom: 10px; }
-    }
-
-    .q-box { padding: 15px; border-radius: 10px; margin-bottom: 12px; transition: border 0.3s; }
-    .q-default { background: #f8fbfe; border: 1px solid #dceefb; border-left: 4px solid #bdc3c7; }
-    .q-filled { background: #fff; border: 1px solid #e0ffe8; border-left: 4px solid #2ecc71; }
-    .q-error { background: #fff5f5; border: 1px solid #ffe0e0; border-left: 4px solid #e74c3c; }
-    .q-text { font-size: 1rem; font-weight: 600; color: #2c3e50; margin-bottom: 8px; }
-    
-    .stButton button { font-weight: 600; border-radius: 8px; width: 100%; }
-    .stRadio > div { gap: 0px !important; }
-    .section-header { background-color: #f1f8ff; padding: 12px; border-radius: 8px; color: #2c3e50; font-weight: 800; font-size: 1.2rem; text-align: center; margin: 25px 0 15px 0; border-bottom: 3px solid #3498db; }
-    
-    @media print { .stSidebar, .stButton, button, header, footer, [data-testid="stToolbar"] { display: none !important; } }
-</style>
-""", unsafe_allow_html=True)
-
-# ==========================================
-# 4. VERİ SETLERİ (TAM ORİJİNAL VERİLER)
+# 5. TEST VERİLERİ (TAM SORU SETİ - RESTORE EDİLDİ)
 # ==========================================
 SORULAR_ISI = [
     {"text": "Boş vakitlerinizde ne yaparsınız?", "options": [{"text": "Evde zaman geçirmek", "value": 1}, {"text": "Çoğunlukla evde", "value": 2}, {"text": "Bazen evde bezen dışarda", "value": 3}, {"text": "Genellikle dışarda", "value": 4}, {"text": "Evin dışında", "value": 5}]},
@@ -421,6 +361,10 @@ with st.sidebar:
     st.markdown(f"{chk(st.session_state.results_cakra)} Çakra Enerjisi")
     
     st.divider()
+    
+    # GEÇMİŞ KAYITLARI GÖRÜNTÜLEME
+    if st.button("🗄️ Hasta Geçmişi"): st.session_state.page = "History"; st.rerun()
+
     if st.button("📄 Raporu Görüntüle", type="primary"): 
         if st.session_state.results_genel or st.session_state.results_cakra:
             st.session_state.page = "Rapor"; st.rerun()
@@ -441,6 +385,17 @@ if st.session_state.page == "Giriş":
             if st.button("Analize Başla 🚀", type="primary", use_container_width=True):
                 if ad: st.session_state.user_info = {"ad": ad, "cinsiyet": cinsiyet, "yas": yas}; st.session_state.page = "Menu"; st.rerun()
                 else: st.warning("İsim giriniz.")
+
+elif st.session_state.page == "History":
+    st.title("🗄️ Hasta Geçmişi")
+    records = get_history()
+    if records:
+        for r in records:
+            with st.expander(f"{r[2]} yaş | {r[1]} | {r[3]} ({r[4]})"):
+                st.write(f"**Özet:** {r[5]}")
+    else:
+        st.info("Henüz kayıtlı analiz bulunmamaktadır.")
+    if st.button("Geri Dön"): st.session_state.page = "Menu"; st.rerun()
 
 elif st.session_state.page == "Menu":
     st.subheader(f"Hoşgeldiniz, {st.session_state.user_info['ad']}")
@@ -489,7 +444,10 @@ elif st.session_state.page == "Test_Cakra":
                 st.rerun()
             else:
                 st.session_state.results_cakra = calculate_cakra_results(cevaplar_cakra)
-                st.success("Çakra analizi tamamlandı!")
+                # VERİTABANI KAYDI
+                analiz_ozeti = generate_deep_analysis(st.session_state.results_genel, st.session_state.results_cakra)
+                save_to_db(st.session_state.user_info, "Çakra", analiz_ozeti, st.session_state.results_cakra)
+                st.success("Çakra analizi tamamlandı ve veritabanına kaydedildi!")
                 time.sleep(1)
                 st.session_state.page = "Menu"
                 st.rerun()
@@ -543,6 +501,9 @@ elif st.session_state.page == "Test_Genel":
             mizac, skorlar, yuzdeler = genel_mizac_hesapla(cevaplar)
             st.session_state.results_genel = mizac
             st.session_state.genel_yuzdeler = yuzdeler
+            # VERİTABANI KAYDI
+            analiz_ozeti = generate_deep_analysis(mizac, st.session_state.results_cakra)
+            save_to_db(st.session_state.user_info, "Mizaç", analiz_ozeti, yuzdeler)
             st.session_state.page = "Menu"; st.rerun()
     with c2:
         if st.button("🏠 Menü", type="secondary", use_container_width=True):
@@ -552,6 +513,10 @@ elif st.session_state.page == "Rapor":
     tarih = datetime.now().strftime("%d.%m.%Y")
     st.markdown(f"## 📄 Analiz Sonuçları: {st.session_state.user_info.get('ad')}")
     
+    # Derin Analiz Oluştur
+    derin_analiz = generate_deep_analysis(st.session_state.results_genel, st.session_state.results_cakra)
+    st.info(f"🧠 **Uzman Yorumu:** {derin_analiz}")
+
     # ÇAKRA GRAFİĞİ
     fig_cakra_html = ""
     if st.session_state.results_cakra:
@@ -606,7 +571,7 @@ elif st.session_state.page == "Rapor":
         detaylar = MIZAC_BILGILERI.get(st.session_state.results_genel, {}) if st.session_state.results_genel else {}
         mizac_adi = st.session_state.results_genel if st.session_state.results_genel else None
         
-        report_html = create_html_report(st.session_state.user_info, mizac_adi, detaylar, tarih, fig1_html, fig2_html, fig_cakra_html, st.session_state.results_cakra)
+        report_html = create_html_report(st.session_state.user_info, mizac_adi, detaylar, tarih, fig1_html, fig2_html, fig_cakra_html, st.session_state.results_cakra, derin_analiz)
         st.download_button("📥 Raporu İndir", data=report_html, file_name="Analiz.html", mime="text/html", type="primary", use_container_width=True)
     
     if st.button("Menüye Dön"): st.session_state.page = "Menu"; st.rerun()
