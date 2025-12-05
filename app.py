@@ -12,7 +12,7 @@ import base64
 # ==========================================
 # 1. AYARLAR VE YARDIMCI FONKSİYONLAR
 # ==========================================
-DEV_MODE = False  # Yayına alırken False yapın
+DEV_MODE = False  # Yayına alırken False
 
 st.set_page_config(page_title="Dr. Sait SEVİNÇ - Bütüncül Analiz", layout="wide", page_icon="🧘")
 
@@ -48,10 +48,14 @@ def get_image_base64(path):
             return base64.b64encode(img_file.read()).decode()
     return None
 
-# --- HTML RAPOR OLUŞTURUCU (GÜNCELLENDİ: ÇAKRA EKLENDİ) ---
+# --- HTML RAPOR OLUŞTURUCU (GÜNCELLENDİ) ---
 def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, fig_cakra_html, cakra_sonuclar):
     img_data = get_image_base64(LOGO_LOCAL)
     img_src = f"data:image/jpeg;base64,{img_data}" if img_data else LOGO_URL
+    
+    # Mizac Yoksa Boş Gelmesini Yönet
+    mizac_display = mizac if mizac else "Henüz Belirlenmedi"
+    detaylar = detaylar if detaylar else {}
     
     risk_html = ""
     if "Riskler" in detaylar:
@@ -59,21 +63,64 @@ def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, 
             risk_html += f"<li>{r}</li>"
 
     # Çakra Tablosu HTML
-    cakra_table_rows = ""
+    cakra_section_html = ""
     if cakra_sonuclar:
+        cakra_rows = ""
         for cakra, degerler in cakra_sonuclar.items():
-            status_color = "#2ecc71" # Yeşil (Dengeli)
+            status_color = "#2ecc71" # Yeşil
             if "Yavaş" in degerler['durum']: status_color = "#e74c3c" # Kırmızı
             elif "Aşırı" in degerler['durum']: status_color = "#f39c12" # Turuncu
             
-            cakra_table_rows += f"""
+            cakra_rows += f"""
             <tr>
                 <td style="padding:8px; border-bottom:1px solid #eee;"><strong>{cakra}</strong></td>
-                <td style="padding:8px; border-bottom:1px solid #eee;">{degerler['yavas_puan']}</td>
-                <td style="padding:8px; border-bottom:1px solid #eee;">{degerler['asiri_puan']}</td>
+                <td style="padding:8px; border-bottom:1px solid #eee; text-align:center;">{degerler['yavas_puan']}</td>
+                <td style="padding:8px; border-bottom:1px solid #eee; text-align:center;">{degerler['asiri_puan']}</td>
                 <td style="padding:8px; border-bottom:1px solid #eee; color:{status_color}; font-weight:bold;">{degerler['durum']}</td>
             </tr>
             """
+        
+        cakra_section_html = f"""
+        <div class="section" style="page-break-before: always;">
+            <h3>🌀 Çakra Enerji Analizi</h3>
+            <div class="full-width-chart">
+                 <div style="text-align:center; font-weight:bold; margin-bottom:5px;">Çakra Enerji Durumu</div>
+                 {fig_cakra_html}
+            </div>
+            <div class="content">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="background-color:#f8f9fa;">
+                            <th style="padding:8px; text-align:left;">Çakra</th>
+                            <th style="padding:8px; text-align:center;">Yavaşlık Puanı</th>
+                            <th style="padding:8px; text-align:center;">Aşırılık Puanı</th>
+                            <th style="padding:8px; text-align:left;">Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody>{cakra_rows}</tbody>
+                </table>
+            </div>
+        </div>
+        """
+
+    # Mizaç Bölümü HTML (Varsa)
+    mizac_section_html = ""
+    if mizac:
+        mizac_section_html = f"""
+        <div class="result-box">
+            <div>Baskın Mizaç</div>
+            <div class="result-title">{mizac_display}</div>
+        </div>
+        <div class="charts-container">
+            <div class="chart-box"><div style="text-align:center; font-weight:bold; margin-bottom:5px;">Mizaç Dağılımı</div>{fig1_html}</div>
+            <div class="chart-box"><div style="text-align:center; font-weight:bold; margin-bottom:5px;">Mizaç Dengesi</div>{fig2_html}</div>
+        </div>
+        <div class="section"><h3>💡 Mizaç Özellikleri</h3><div class="content">{detaylar.get('Genel', '-')}</div></div>
+        <div class="section"><h3>🥗 Beslenme Tavsiyeleri</h3><div class="content">{detaylar.get('Beslenme', '-')}</div></div>
+        <div class="section"><h3>⚠️ Olası Yatkınlıklar</h3><div class="content"><ul>{risk_html}</ul></div></div>
+        """
+    else:
+        mizac_section_html = "<div class='result-box'>Mizaç analizi yapılmadı.</div>"
 
     html = f"""
     <!DOCTYPE html>
@@ -90,26 +137,19 @@ def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, 
             .info {{ font-size: 1.1em; color: #555; margin-bottom: 30px; text-align: center; }}
             .result-box {{ background-color: #f0f8ff; border: 2px solid #3498db; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 30px; }}
             .result-title {{ font-size: 1.8em; color: #e74c3c; font-weight: bold; margin-top: 5px; }}
-            .charts-container {{ display: flex; justify-content: space-between; margin-bottom: 30px; page-break-inside: avoid; }}
+            .charts-container {{ display: flex; justify-content: space-between; margin-bottom: 30px; }}
             .chart-box {{ width: 48%; border: 1px solid #eee; border-radius: 8px; padding: 10px; background: #fff; }}
-            .full-width-chart {{ width: 100%; border: 1px solid #eee; border-radius: 8px; padding: 10px; background: #fff; margin-bottom: 30px; page-break-inside: avoid; }}
-            .section {{ margin-bottom: 20px; page-break-inside: avoid; }}
+            .full-width-chart {{ width: 100%; border: 1px solid #eee; border-radius: 8px; padding: 10px; background: #fff; margin-bottom: 30px; }}
+            .section {{ margin-bottom: 20px; }}
             .section h3 {{ border-left: 5px solid #1abc9c; padding-left: 10px; color: #16a085; background: #eefcf9; padding: 8px; margin-bottom: 10px; font-size: 1.2em; }}
             .content {{ padding: 0 10px; line-height: 1.5; font-size: 0.95em; }}
-            table {{ width: 100%; border-collapse: collapse; font-size: 0.9em; }}
-            th {{ text-align: left; background-color: #f8f9fa; padding: 8px; border-bottom: 2px solid #ddd; }}
             .footer {{ margin-top: 40px; text-align: center; font-size: 0.7em; color: #999; border-top: 1px solid #eee; padding-top: 10px; }}
-            @media print {{
-                body {{ padding: 0; margin: 0; }}
-                .charts-container {{ display: block; }}
-                .chart-box {{ width: 100%; margin-bottom: 20px; page-break-inside: avoid; }}
-            }}
         </style>
     </head>
     <body>
         <div class="header">
             <img src="{img_src}" class="logo">
-            <h1>BÜTÜNCÜL SAĞLIK & MİZAÇ ANALİZ RAPORU</h1>
+            <h1>BÜTÜNCÜL SAĞLIK RAPORU</h1>
             <div class="info">
                 <strong>Danışan:</strong> {user_info.get('ad')} &nbsp;|&nbsp; 
                 <strong>Yaş:</strong> {user_info.get('yas')} &nbsp;|&nbsp; 
@@ -117,44 +157,17 @@ def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, 
             </div>
         </div>
         
-        <div class="result-box">
-            <div>Baskın Mizaç</div>
-            <div class="result-title">{mizac}</div>
-        </div>
+        {mizac_section_html}
+        {cakra_section_html}
 
-        <div class="charts-container">
-            <div class="chart-box"><div style="text-align:center; font-weight:bold; margin-bottom:5px;">Mizaç Dağılımı</div>{fig1_html}</div>
-            <div class="chart-box"><div style="text-align:center; font-weight:bold; margin-bottom:5px;">Mizaç Dengesi</div>{fig2_html}</div>
-        </div>
-
-        <div class="section"><h3>💡 Mizaç Özellikleri</h3><div class="content">{detaylar.get('Genel', '-')}</div></div>
-        <div class="section"><h3>🥗 Beslenme Tavsiyeleri</h3><div class="content">{detaylar.get('Beslenme', '-')}</div></div>
-        <div class="section"><h3>⚠️ Olası Yatkınlıklar</h3><div class="content"><ul>{risk_html}</ul></div></div>
-        
-        <div style="page-break-after: always;"></div>
-        
-        <div class="section">
-            <h3>🌀 Çakra Enerji Analizi</h3>
-            <div class="full-width-chart">
-                 <div style="text-align:center; font-weight:bold; margin-bottom:5px;">Çakra Enerji Durumu (Yavaş vs Aşırı)</div>
-                 {fig_cakra_html}
-            </div>
-            <div class="content">
-                <table>
-                    <thead><tr><th>Çakra</th><th>Yavaşlık Puanı</th><th>Aşırılık Puanı</th><th>Durum</th></tr></thead>
-                    <tbody>{cakra_table_rows}</tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="footer">Bu rapor Dr. Sait SEVİNÇ Analiz Sistemi tarafından oluşturulmuştur.<br>Tıbbi teşhis yerine geçmez, bilgilendirme amaçlıdır.</div>
+        <div class="footer">Bu rapor Dr. Sait SEVİNÇ Analiz Sistemi tarafından oluşturulmuştur.</div>
     </body>
     </html>
     """
     return html
 
 # ==========================================
-# 🎨 CSS (MOBİL UYUMLU VE ŞIK)
+# 🎨 CSS
 # ==========================================
 st.markdown("""
 <style>
@@ -178,53 +191,30 @@ st.markdown("""
     .card-title { font-size: 1.2rem; font-weight: 700; color: #2c3e50; margin-bottom: 8px; line-height: 1.3; }
     .card-desc { font-size: 0.9rem; color: #7f8c8d; }
 
-    /* SORU KUTULARI (Mobil İçin Özel Ayar) */
-    .q-box { 
-        padding: 18px; 
-        border-radius: 12px; 
-        margin-bottom: 15px; 
-        transition: border 0.3s; 
-    }
+    /* SORU KUTULARI */
+    .q-box { padding: 18px; border-radius: 12px; margin-bottom: 15px; transition: border 0.3s; }
     .q-default { background: #f8fbfe; border: 1px solid #dceefb; border-left: 5px solid #bdc3c7; }
     .q-filled { background: #ffffff; border: 1px solid #e0ffe8; border-left: 5px solid #2ecc71; box-shadow: 0 2px 8px rgba(46, 204, 113, 0.1); }
     .q-error { background: #fff5f5; border: 1px solid #ffe0e0; border-left: 5px solid #e74c3c; animation: shake 0.5s; }
     .q-text { font-size: 1.05rem; font-weight: 600; color: #2c3e50; margin-bottom: 10px; line-height: 1.4; }
     
-    /* BUTONLAR */
+    /* BUTON VE RADIO */
     .stButton button { font-weight: 600; border-radius: 8px; transition: all 0.2s; }
-    .stButton button:contains("🛠️") { background-color: #2c3e50 !important; color: white !important; border: 2px dashed #f1c40f !important; }
+    .stRadio > div { gap: 0px !important; }
     
-    /* MOBİL İÇİN ÖZEL CSS (EŞSİZ DOKUNUŞ) */
-    @media (max-width: 768px) {
-        .menu-card { height: auto; min-height: 180px; padding: 15px; }
-        .q-box { padding: 12px 15px !important; margin-bottom: 12px !important; }
-        .q-text { font-size: 1rem !important; margin-bottom: 8px !important; }
-        /* Radio butonlarını sıkılaştır */
-        .stRadio > div { gap: 0px !important; }
-        .stRadio label { font-size: 0.95rem !important; }
-    }
+    /* DİĞER */
+    .section-header { background-color: #f1f8ff; padding: 15px; border-radius: 10px; color: #2c3e50; font-weight: 800; font-size: 1.4rem; text-align: center; margin-top: 30px; margin-bottom: 20px; border-bottom: 4px solid #3498db; }
     
-    /* DİĞERLERİ */
-    .rec-box { background: #eefcf9; border-left: 4px solid #1abc9c; padding: 15px; border-radius: 0 8px 8px 0; margin-top: 10px; line-height: 1.6; }
-    .info-list { list-style: none; padding: 0; margin: 0; }
-    .info-item { background: white; border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; align-items: center; border: 1px solid #eee; }
-    .info-icon { font-size: 24px; margin-right: 15px; min-width: 30px; text-align: center; }
-    .section-header { background-color: #f1f8ff; padding: 15px; border-radius: 10px; color: #2c3e50; font-weight: 800; font-size: 1.4rem; text-align: center; margin-top: 30px; margin-bottom: 20px; border-bottom: 4px solid #3498db; letter-spacing: 1px; }
-    
-    @media print {
-        .stSidebar, .stButton, button, header, footer, [data-testid="stToolbar"] { display: none !important; }
-    }
+    @media print { .stSidebar, .stButton, button, header, footer, [data-testid="stToolbar"] { display: none !important; } }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. VERİ SETLERİ (MİZAÇ SORULARI - AYNI)
+# 4. VERİ SETLERİ (MİZAÇ - Örnek)
 # ==========================================
-# (Kod kalabalığı yapmaması için Isı ve Nem sorularını aynen koruyoruz, buraya eklenmiş varsayın.
-# Ancak tam kod çalışması için buraya tekrar kısa örnek ekliyorum, 
-# gerçek uygulamada önceki sorulari buraya yapıştırmalısın.)
-SORULAR_ISI = [{"text": "Vücut ısınız genel olarak nasıldır?", "options": [{"text": "Çok üşürüm", "value": 1}, {"text": "Üşürüm", "value": 2}, {"text": "Normal", "value": 3}, {"text": "Sıcağım", "value": 4}, {"text": "Çok sıcağım", "value": 5}]}] * 5 # Demo için kısaltıldı
-SORULAR_NEM = [{"text": "Cilt yapınız nasıldır?", "options": [{"text": "Çok nemli", "value": 1}, {"text": "Nemli", "value": 2}, {"text": "Normal", "value": 3}, {"text": "Kuru", "value": 4}, {"text": "Çok kuru", "value": 5}]}] * 5 # Demo için kısaltıldı
+# (Tam sürümde burası dolu olmalı, demo için örnekler)
+SORULAR_ISI = [{"text": "Vücut ısınız?", "options": [{"text": "Çok üşürüm", "value": 1}, {"text": "Çok sıcağım", "value": 5}]}] * 5 
+SORULAR_NEM = [{"text": "Cilt yapınız?", "options": [{"text": "Çok nemli", "value": 1}, {"text": "Çok kuru", "value": 5}]}] * 5
 
 SORULAR_GENEL_DETAYLI = {
     "SICAKLIK": {"puanlar": {"Hayır": 1, "Orta": 2, "Evet": 3}, "sorular": ["Hareketli misiniz?", "Öfkeniz hızlı mı?", "Sıcağı sever misiniz?"]},
@@ -234,9 +224,8 @@ SORULAR_GENEL_DETAYLI = {
 }
 
 # ==========================================
-# 🆕 5. YENİ MODÜL: ÇAKRA SORULARI
+# 5. ÇAKRA SORULARI
 # ==========================================
-# 1-8: Yavaş Çalışma, 9-16: Aşırı Çalışma
 SORULAR_CAKRA = {
     "KÖK ÇAKRA (Muladhara)": [
         "Kendimi çoğu zaman güvensiz, huzursuz ya da korunmasız hissediyorum.",
@@ -367,7 +356,7 @@ SORULAR_CAKRA = {
 }
 
 # ==========================================
-# 6. YARDIMCI FONKSİYONLAR (GÜNCELLENDİ)
+# 6. FONKSİYONLAR
 # ==========================================
 def init_state():
     defaults = {
@@ -378,15 +367,6 @@ def init_state():
     }
     for k, v in defaults.items():
         if k not in st.session_state: st.session_state[k] = v
-
-def get_icon_for_disease(disease):
-    d = disease.lower()
-    icons = {"kalp": "❤️", "tansiyon": "❤️", "mide": "🥣", "safra": "🥣", "hazım": "🥣", "baş": "🧠", "migren": "🧠", 
-             "cilt": "🧖", "akne": "🧖", "eklem": "🦴", "romatizma": "🦴", "şeker": "🩸", "diyabet": "🩸", 
-             "depresyon": "🌧️", "kaygı": "🌧️", "obezite": "⚖️", "kilo": "⚖️", "uyku": "💤", "bağırsak": "💩", "kabızlık": "💩"}
-    for k, v in icons.items():
-        if k in d: return v
-    return "🔸"
 
 def render_questions_with_validation(soru_listesi, key_prefix, submitted):
     total_score = 0
@@ -408,31 +388,24 @@ def render_questions_with_validation(soru_listesi, key_prefix, submitted):
         else: missing = True
     return total_score, missing
 
-# 🆕 ÇAKRA HESAPLAMA
 def calculate_cakra_results(answers):
     sonuclar = {}
     for cakra_adi, sorular in SORULAR_CAKRA.items():
         yavas_toplam = 0
         asiri_toplam = 0
-        # İlk 8 soru yavaşlık, Sonraki 8 soru aşırılık
         for i in range(16):
             key = f"cakra_{cakra_adi}_{i}"
             val = answers.get(key, 0)
             if i < 8: yavas_toplam += val
             else: asiri_toplam += val
         
-        # Durum Belirleme (Dokümandaki Mantık)
         if yavas_toplam >= 30 and asiri_toplam < 30: durum = "Yavaş / Blokaj"
         elif asiri_toplam >= 30 and yavas_toplam < 30: durum = "Aşırı Aktif"
         elif yavas_toplam >= 30 and asiri_toplam >= 30: durum = "Dengesiz (Kaotik)"
         elif 20 <= yavas_toplam <= 25 and 20 <= asiri_toplam <= 25: durum = "Dengeli"
-        else: durum = "Hafif Dengesiz" # Ara değerler için
+        else: durum = "Hafif Dengesiz"
         
-        sonuclar[cakra_adi] = {
-            "yavas_puan": yavas_toplam,
-            "asiri_puan": asiri_toplam,
-            "durum": durum
-        }
+        sonuclar[cakra_adi] = {"yavas_puan": yavas_toplam, "asiri_puan": asiri_toplam, "durum": durum}
     return sonuclar
 
 def calculate_result_isi(score): return "SICAK" if score > 79 else ("MUTEDİL" if score > 70 else "SOĞUK")
@@ -455,11 +428,6 @@ def genel_mizac_hesapla(cevaplar):
 
 def reset_app(): st.session_state.clear(); st.rerun()
 
-def dev_mode_auto_fill():
-    if not st.session_state.user_info: st.session_state.user_info = {"ad": "Test Kullanıcısı", "cinsiyet": "Erkek", "yas": 30}
-    # (Demo amaçlı doldurma fonksiyonları burada olurdu, kod kısalığı için atlandı)
-    st.session_state.page = "Rapor"; st.rerun()
-
 # ==========================================
 # 7. UYGULAMA AKIŞI
 # ==========================================
@@ -472,20 +440,22 @@ with st.sidebar:
     if st.session_state.user_info: st.success(f"👤 {st.session_state.user_info.get('ad')}")
     if st.button("🏠 Ana Menü"): st.session_state.page = "Menu"; st.rerun()
     st.divider()
-    st.caption("Tamamlanan Testler")
-    # Durum Göstergeleri
     chk = lambda x: "✅" if x else "⬜"
     st.markdown(f"{chk(st.session_state.results_genel)} Genel Mizaç")
-    st.markdown(f"{chk(st.session_state.results_isi)} Isı Dengesi")
-    st.markdown(f"{chk(st.session_state.results_nem)} Nem Dengesi")
     st.markdown(f"{chk(st.session_state.results_cakra)} Çakra Enerjisi")
     
     st.divider()
-    if st.button("📄 Raporu Görüntüle", type="primary"): st.session_state.page = "Rapor"; st.rerun()
+    # Rapor butonu artık her zaman aktif, sonuç yoksa uyarı verir
+    if st.button("📄 Raporu Görüntüle", type="primary"): 
+        if st.session_state.results_genel or st.session_state.results_cakra:
+            st.session_state.page = "Rapor"; st.rerun()
+        else:
+            st.warning("Henüz hiç analiz yapmadınız.")
+
     if st.button("🔄 Sıfırla", type="secondary"): reset_app()
 
 if st.session_state.page == "Giriş":
-    st.markdown("<div style='text-align:center; padding: 20px;'><h1>Bütüncül Analiz Sistemi</h1><p>Mizaç, Element ve Çakra Dengenizi Keşfedin.</p></div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align:center; padding: 20px;'><h1>Bütüncül Analiz Sistemi</h1></div>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
         with st.container(border=True):
@@ -495,15 +465,13 @@ if st.session_state.page == "Giriş":
             with c2_ic: yas = st.number_input("Yaşınız", 10, 100, 30)
             if st.button("Analize Başla 🚀", type="primary", use_container_width=True):
                 if ad: st.session_state.user_info = {"ad": ad, "cinsiyet": cinsiyet, "yas": yas}; st.session_state.page = "Menu"; st.rerun()
-                else: st.warning("Lütfen isminizi giriniz.")
-            if DEV_MODE and st.button("DevSkip"): dev_mode_auto_fill()
+                else: st.warning("İsim giriniz.")
 
 elif st.session_state.page == "Menu":
     st.subheader(f"Hoşgeldiniz, {st.session_state.user_info['ad']}")
     c1, c2 = st.columns(2)
     c3, c4 = st.columns(2)
     
-    # Kart Helper
     def create_card(col, title, icon, desc, key, target, done):
         css = "menu-card card-done" if done else "menu-card"
         badge = "<div class='status-badge'>✅ Tamamlandı</div>" if done else ""
@@ -515,43 +483,37 @@ elif st.session_state.page == "Menu":
     create_card(c1, "Genel Mizaç", "🦁", "Baskın element tespiti.", "btn_gnl", "Test_Genel", st.session_state.results_genel)
     create_card(c2, "Sıcaklık / Soğukluk", "🔥", "Metabolizma ısısı.", "btn_isi", "Test_Isi", st.session_state.results_isi)
     create_card(c3, "Islaklık / Kuruluk", "💧", "Nem dengesi.", "btn_nem", "Test_Nem", st.session_state.results_nem)
-    create_card(c4, "Çakra Enerjisi", "🌀", "Enerji merkezleri analizi.", "btn_cakra", "Test_Cakra", st.session_state.results_cakra)
+    create_card(c4, "Çakra Enerjisi", "🌀", "Enerji merkezleri.", "btn_cakra", "Test_Cakra", st.session_state.results_cakra)
 
 elif st.session_state.page == "Test_Cakra":
     st.title("🌀 Çakra Enerji Analizi")
-    st.info("Aşağıdaki ifadeleri 1 (Hiç katılmıyorum) ile 5 (Tamamen katılıyorum) arasında puanlayınız.")
+    st.info("İfadeleri kendinize göre değerlendiriniz.")
     
     cevaplar_cakra = {}
     missing_count = 0
     
-    # 7 Çakra Döngüsü
+    # Şıkların rakamları kaldırıldı
+    labels = ["Hiç Katılmıyorum", "Nadiren", "Bazen", "Sıklıkla", "Tamamen Katılıyorum"]
+    vals = [1, 2, 3, 4, 5]
+    
     for cakra, sorular in SORULAR_CAKRA.items():
         st.markdown(f'<div class="section-header">{cakra}</div>', unsafe_allow_html=True)
-        # Sorular (16 Adet)
         for i, soru in enumerate(sorular):
             key = f"cakra_{cakra}_{i}"
             val = st.session_state.get(key)
-            
-            # Stil
             css = "q-box q-filled" if val else ("q-box q-error" if st.session_state.submitted_cakra else "q-box q-default")
             icon = "🔴 " if (st.session_state.submitted_cakra and not val) else ""
-            
             st.markdown(f"<div class='{css}'><div class='q-text'>{icon}{i+1}. {soru}</div></div>", unsafe_allow_html=True)
             
-            # Puanlama 1-5
-            col_opts = st.columns(5)
-            labels = ["1-Hiç", "2-Nadiren", "3-Bazen", "4-Sıklıkla", "5-Tamamen"]
-            vals = [1, 2, 3, 4, 5]
-            
-            # Radio yerine columns ve button kullanımı daha temiz olabilir ama state için radio daha güvenli
+            # Label'da rakam yok, arka planda index+1 ile puanlama
             choice = st.radio(f"{cakra}_{i}", labels, key=key, horizontal=True, index=None, label_visibility="collapsed")
-            if choice: cevaplar_cakra[key] = int(choice.split("-")[0])
+            if choice: cevaplar_cakra[key] = labels.index(choice) + 1
             else: missing_count += 1
 
     if st.button("Analizi Bitir", type="primary", use_container_width=True):
         st.session_state.submitted_cakra = True
         if missing_count > 0:
-            st.error(f"{missing_count} adet soru boş bırakıldı. Lütfen tamamlayınız.")
+            st.error("Lütfen tüm soruları cevaplayınız.")
             st.rerun()
         else:
             st.session_state.results_cakra = calculate_cakra_results(cevaplar_cakra)
@@ -560,12 +522,11 @@ elif st.session_state.page == "Test_Cakra":
             st.session_state.page = "Menu"
             st.rerun()
 
-# (Test_Isi, Test_Nem, Test_Genel blokları önceki kod ile aynı kalacak şekilde buraya eklenmeli. Yer tasarrufu için özet geçildi.)
+# (Test_Isi, Test_Nem kodları önceki ile aynı...)
 elif st.session_state.page == "Test_Isi":
     st.title("🔥 Isı Analizi")
     score, missing = render_questions_with_validation(SORULAR_ISI, "isi", st.session_state.submitted_isi)
-    if st.button("Kaydet", type="primary"): 
-        st.session_state.submitted_isi = True; st.rerun()
+    if st.button("Kaydet"): st.session_state.submitted_isi = True; st.rerun()
     if st.session_state.submitted_isi and not missing:
         st.session_state.results_isi = calculate_result_isi(score)
         st.session_state.page = "Menu"; st.rerun()
@@ -573,71 +534,111 @@ elif st.session_state.page == "Test_Isi":
 elif st.session_state.page == "Test_Nem":
     st.title("💧 Nem Analizi")
     score, missing = render_questions_with_validation(SORULAR_NEM, "nem", st.session_state.submitted_nem)
-    if st.button("Kaydet", type="primary"): 
-        st.session_state.submitted_nem = True; st.rerun()
+    if st.button("Kaydet"): st.session_state.submitted_nem = True; st.rerun()
     if st.session_state.submitted_nem and not missing:
         st.session_state.results_nem = calculate_result_nem(score)
         st.session_state.page = "Menu"; st.rerun()
 
 elif st.session_state.page == "Test_Genel":
     st.title("🦁 Genel Mizaç")
-    # ... (Önceki kodun aynısı buraya gelecek) ...
-    # Demo için basit geçiş:
-    if st.button("Testi Atla (Demo)", type="secondary"):
-        st.session_state.results_genel = "Demevi"
-        st.session_state.genel_yuzdeler = {"SICAKLIK": 60, "SOĞUKLUK": 20, "NEMLİLİK": 70, "KURULUK": 10}
-        st.session_state.page="Menu"; st.rerun()
+    cevaplar = {}
+    for bolum, veri in SORULAR_GENEL_DETAYLI.items():
+        st.markdown(f'<div class="section-header">{bolum}</div>', unsafe_allow_html=True)
+        secenekler = list(veri["puanlar"].keys()); secenekler.sort(key=lambda x: veri["puanlar"][x])
+        for i, soru in enumerate(veri["sorular"]):
+            key = f"genel_{bolum}_{i}"
+            st.markdown(f"<div class='q-box q-default'><div class='q-text'>{i+1}. {soru}</div></div>", unsafe_allow_html=True)
+            choice = st.radio(key, secenekler, key=key, horizontal=True, label_visibility="collapsed")
+            if choice: cevaplar[key] = choice
+
+    if st.button("Kaydet ve Bitir"):
+        mizac, skorlar, yuzdeler = genel_mizac_hesapla(cevaplar)
+        st.session_state.results_genel = mizac
+        st.session_state.genel_yuzdeler = yuzdeler
+        st.session_state.page = "Menu"; st.rerun()
 
 elif st.session_state.page == "Rapor":
     tarih = datetime.now().strftime("%d.%m.%Y")
     st.markdown(f"## 📄 Analiz Sonuçları: {st.session_state.user_info.get('ad')}")
     
-    # 1. ÇAKRA GRAFİĞİ HAZIRLAMA
+    # 1. ÇAKRA GRAFİĞİ (Varsa oluştur)
     fig_cakra_html = ""
     if st.session_state.results_cakra:
         data = st.session_state.results_cakra
         cakra_names = list(data.keys())
         yavas_vals = [d['yavas_puan'] for d in data.values()]
         asiri_vals = [d['asiri_puan'] for d in data.values()]
-        
         fig_cakra = go.Figure()
         fig_cakra.add_trace(go.Bar(x=cakra_names, y=yavas_vals, name='Yavaşlık/Blokaj', marker_color='#3498db'))
         fig_cakra.add_trace(go.Bar(x=cakra_names, y=asiri_vals, name='Aşırı Aktiflik', marker_color='#e74c3c'))
-        
-        # Eşik Çizgisi (30 Puan)
         fig_cakra.add_shape(type="line", x0=-0.5, x1=len(cakra_names)-0.5, y0=30, y1=30, line=dict(color="gray", width=2, dash="dash"))
-        
-        fig_cakra.update_layout(barmode='group', title="Çakra Enerji Dengesi (30 Puan Üzeri Dengesiz)", height=400, margin=dict(t=40, b=40, l=40, r=40))
+        fig_cakra.update_layout(barmode='group', title="Çakra Enerji Dengesi", height=400, margin=dict(t=40, b=40, l=40, r=40))
         fig_cakra_html = fig_cakra.to_html(full_html=False, include_plotlyjs='cdn')
-        
         st.plotly_chart(fig_cakra, use_container_width=True)
         
-        # Çakra Detay Tablosu (Ekrana)
-        st.markdown("### Çakra Durum Tablosu")
+        # Tablo
         df_cakra = pd.DataFrame.from_dict(data, orient='index')
+        st.markdown("### Çakra Durum Tablosu")
         st.dataframe(df_cakra, use_container_width=True)
 
-    # 2. MİZAÇ GRAFİKLERİ (Önceki koddan)
+    # 2. MİZAÇ GRAFİKLERİ (Varsa oluştur)
     fig1_html, fig2_html = "", ""
     if st.session_state.results_genel:
         yuzdeler = st.session_state.genel_yuzdeler
-        cats = list(yuzdeler.keys())
-        vals = list(yuzdeler.values())
-        fig1 = go.Figure(go.Bar(x=cats, y=vals, marker_color=['#E74C3C', '#3498DB', '#F1C40F', '#2ECC71']))
+        
+        # --- ÖZEL EKSEN SIRALAMASI ---
+        # İstenen: Top: Nem, Right: Soğuk, Bottom: Kuru, Left: Sıcak
+        # Plotly Polar'da 0 derece Sağ (Doğu) kabul edilir, saat yönünün tersine gider.
+        # Sıralama: Sağ (0) -> Üst (90) -> Sol (180) -> Alt (270)
+        # Sağ: SOĞUKLUK, Üst: NEMLİLİK, Sol: SICAKLIK, Alt: KURULUK
+        
+        ordered_cats = ["SOĞUKLUK", "NEMLİLİK", "SICAKLIK", "KURULUK"]
+        ordered_vals = [yuzdeler.get(k, 0) for k in ordered_cats]
+        
+        # Bar Grafik
+        fig1 = go.Figure(go.Bar(x=ordered_cats, y=ordered_vals, marker_color=['#3498DB', '#2ECC71', '#E74C3C', '#F1C40F']))
         fig1.update_layout(height=300, margin=dict(t=10, b=20, l=20, r=20))
         fig1_html = fig1.to_html(full_html=False, include_plotlyjs='cdn')
         st.plotly_chart(fig1, use_container_width=True)
         
-        # Radar
-        fig2 = go.Figure(go.Scatterpolar(r=vals + [vals[0]], theta=cats + [cats[0]], fill='toself'))
-        fig2.update_layout(height=350, margin=dict(t=40, b=40, l=60, r=60))
-        fig2_html = fig2.to_html(full_html=False, include_plotlyjs='cdn')
-
-    # HTML RAPOR İNDİRME
-    if st.session_state.results_genel:
-        detaylar = MIZAC_BILGILERI.get(st.session_state.results_genel, {})
-        report_html = create_html_report(st.session_state.user_info, st.session_state.results_genel, detaylar, tarih, fig1_html, fig2_html, fig_cakra_html, st.session_state.results_cakra)
+        # Radar Grafik (Eksen Düzeltilmiş)
+        # Döngüyü kapatmak için başa dön
+        radar_cats = ordered_cats + [ordered_cats[0]]
+        radar_vals = ordered_vals + [ordered_vals[0]]
         
-        st.download_button("📥 Tam Raporu İndir (HTML)", data=report_html, file_name="Analiz_Raporu.html", mime="text/html", type="primary", use_container_width=True)
+        fig2 = go.Figure(go.Scatterpolar(
+            r=radar_vals, 
+            theta=radar_cats, 
+            fill='toself',
+            line=dict(color='#8E44AD', width=3)
+        ))
+        # start_angle=0 (Sağ) defaulttur. Direction counterclockwise defaulttur.
+        # Yani: Soğuk(Sağ) -> Nem(Üst) -> Sıcak(Sol) -> Kuru(Alt) tam oturur.
+        fig2.update_layout(
+            polar=dict(radialaxis=dict(visible=True, range=[0, 100])), 
+            height=350, margin=dict(t=40, b=40, l=60, r=60)
+        )
+        fig2_html = fig2.to_html(full_html=False, include_plotlyjs='cdn')
+        st.plotly_chart(fig2, use_container_width=True)
+        
+        # Sonuç Metinleri
+        st.info(f"Baskın Mizaç: **{st.session_state.results_genel}**")
+        
+    # RAPOR İNDİRME (Her ikisi için çalışır)
+    if st.session_state.results_genel or st.session_state.results_cakra:
+        detaylar = MIZAC_BILGILERI.get(st.session_state.results_genel, {}) if st.session_state.results_genel else {}
+        mizac_adi = st.session_state.results_genel if st.session_state.results_genel else None
+        
+        report_html = create_html_report(
+            st.session_state.user_info, 
+            mizac_adi, 
+            detaylar, 
+            tarih, 
+            fig1_html, 
+            fig2_html, 
+            fig_cakra_html, 
+            st.session_state.results_cakra
+        )
+        st.download_button("📥 Raporu İndir", data=report_html, file_name="Analiz.html", mime="text/html", type="primary", use_container_width=True)
     
     if st.button("Menüye Dön"): st.session_state.page = "Menu"; st.rerun()
