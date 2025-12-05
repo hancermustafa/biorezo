@@ -48,12 +48,11 @@ def get_image_base64(path):
             return base64.b64encode(img_file.read()).decode()
     return None
 
-# --- HTML RAPOR OLUŞTURUCU (GÜNCELLENDİ) ---
+# --- HTML RAPOR OLUŞTURUCU (RENK MANTIĞI DÜZELTİLDİ) ---
 def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, fig_cakra_html, cakra_sonuclar):
     img_data = get_image_base64(LOGO_LOCAL)
     img_src = f"data:image/jpeg;base64,{img_data}" if img_data else LOGO_URL
     
-    # Mizac Yoksa Boş Gelmesini Yönet
     mizac_display = mizac if mizac else "Henüz Belirlenmedi"
     detaylar = detaylar if detaylar else {}
     
@@ -67,16 +66,22 @@ def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, 
     if cakra_sonuclar:
         cakra_rows = ""
         for cakra, degerler in cakra_sonuclar.items():
-            status_color = "#2ecc71" # Yeşil
-            if "Yavaş" in degerler['durum']: status_color = "#e74c3c" # Kırmızı
-            elif "Aşırı" in degerler['durum']: status_color = "#f39c12" # Turuncu
+            durum = degerler['durum']
+            
+            # --- YENİ RENK MANTIĞI ---
+            if durum == "Dengeli":
+                status_color = "#2ecc71" # Yeşil (İyi)
+            elif "Hafif" in durum:
+                status_color = "#f39c12" # Turuncu (Uyarı)
+            else:
+                status_color = "#e74c3c" # Kırmızı (Sorun: Yavaş, Aşırı veya Kaotik)
             
             cakra_rows += f"""
             <tr>
                 <td style="padding:8px; border-bottom:1px solid #eee;"><strong>{cakra}</strong></td>
                 <td style="padding:8px; border-bottom:1px solid #eee; text-align:center;">{degerler['yavas_puan']}</td>
                 <td style="padding:8px; border-bottom:1px solid #eee; text-align:center;">{degerler['asiri_puan']}</td>
-                <td style="padding:8px; border-bottom:1px solid #eee; color:{status_color}; font-weight:bold;">{degerler['durum']}</td>
+                <td style="padding:8px; border-bottom:1px solid #eee; color:{status_color}; font-weight:bold;">{durum}</td>
             </tr>
             """
         
@@ -84,7 +89,6 @@ def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, 
         <div class="section" style="page-break-before: always;">
             <h3>🌀 Çakra Enerji Analizi</h3>
             <div class="full-width-chart">
-                 <div style="text-align:center; font-weight:bold; margin-bottom:5px;">Çakra Enerji Durumu</div>
                  {fig_cakra_html}
             </div>
             <div class="content">
@@ -103,7 +107,7 @@ def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, 
         </div>
         """
 
-    # Mizaç Bölümü HTML (Varsa)
+    # Mizaç Bölümü HTML
     mizac_section_html = ""
     if mizac:
         mizac_section_html = f"""
@@ -174,7 +178,6 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
 
-    /* KART TASARIMI */
     .menu-card {
         background: linear-gradient(145deg, #ffffff, #f0f2f5);
         padding: 20px; border-radius: 16px;
@@ -191,18 +194,14 @@ st.markdown("""
     .card-title { font-size: 1.2rem; font-weight: 700; color: #2c3e50; margin-bottom: 8px; line-height: 1.3; }
     .card-desc { font-size: 0.9rem; color: #7f8c8d; }
 
-    /* SORU KUTULARI */
     .q-box { padding: 18px; border-radius: 12px; margin-bottom: 15px; transition: border 0.3s; }
     .q-default { background: #f8fbfe; border: 1px solid #dceefb; border-left: 5px solid #bdc3c7; }
     .q-filled { background: #ffffff; border: 1px solid #e0ffe8; border-left: 5px solid #2ecc71; box-shadow: 0 2px 8px rgba(46, 204, 113, 0.1); }
     .q-error { background: #fff5f5; border: 1px solid #ffe0e0; border-left: 5px solid #e74c3c; animation: shake 0.5s; }
     .q-text { font-size: 1.05rem; font-weight: 600; color: #2c3e50; margin-bottom: 10px; line-height: 1.4; }
     
-    /* BUTON VE RADIO */
     .stButton button { font-weight: 600; border-radius: 8px; transition: all 0.2s; }
     .stRadio > div { gap: 0px !important; }
-    
-    /* DİĞER */
     .section-header { background-color: #f1f8ff; padding: 15px; border-radius: 10px; color: #2c3e50; font-weight: 800; font-size: 1.4rem; text-align: center; margin-top: 30px; margin-bottom: 20px; border-bottom: 4px solid #3498db; }
     
     @media print { .stSidebar, .stButton, button, header, footer, [data-testid="stToolbar"] { display: none !important; } }
@@ -210,9 +209,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. VERİ SETLERİ (MİZAÇ - Örnek)
+# 4. VERİ SETLERİ
 # ==========================================
-# (Tam sürümde burası dolu olmalı, demo için örnekler)
+# (Kod kısalığı için Isı ve Nem sorularını kısa tuttum, gerçek soruları buraya eklemelisin)
 SORULAR_ISI = [{"text": "Vücut ısınız?", "options": [{"text": "Çok üşürüm", "value": 1}, {"text": "Çok sıcağım", "value": 5}]}] * 5 
 SORULAR_NEM = [{"text": "Cilt yapınız?", "options": [{"text": "Çok nemli", "value": 1}, {"text": "Çok kuru", "value": 5}]}] * 5
 
@@ -223,9 +222,6 @@ SORULAR_GENEL_DETAYLI = {
     "KURULUK":  {"puanlar": {"Hayır": 1, "Orta": 2, "Evet": 3}, "sorular": ["Cildiniz kuru mu?", "Zayıf mısınız?", "Uykunuz hafif mi?"]}
 }
 
-# ==========================================
-# 5. ÇAKRA SORULARI
-# ==========================================
 SORULAR_CAKRA = {
     "KÖK ÇAKRA (Muladhara)": [
         "Kendimi çoğu zaman güvensiz, huzursuz ya da korunmasız hissediyorum.",
@@ -445,7 +441,6 @@ with st.sidebar:
     st.markdown(f"{chk(st.session_state.results_cakra)} Çakra Enerjisi")
     
     st.divider()
-    # Rapor butonu artık her zaman aktif, sonuç yoksa uyarı verir
     if st.button("📄 Raporu Görüntüle", type="primary"): 
         if st.session_state.results_genel or st.session_state.results_cakra:
             st.session_state.page = "Rapor"; st.rerun()
@@ -491,10 +486,7 @@ elif st.session_state.page == "Test_Cakra":
     
     cevaplar_cakra = {}
     missing_count = 0
-    
-    # Şıkların rakamları kaldırıldı
     labels = ["Hiç Katılmıyorum", "Nadiren", "Bazen", "Sıklıkla", "Tamamen Katılıyorum"]
-    vals = [1, 2, 3, 4, 5]
     
     for cakra, sorular in SORULAR_CAKRA.items():
         st.markdown(f'<div class="section-header">{cakra}</div>', unsafe_allow_html=True)
@@ -505,7 +497,6 @@ elif st.session_state.page == "Test_Cakra":
             icon = "🔴 " if (st.session_state.submitted_cakra and not val) else ""
             st.markdown(f"<div class='{css}'><div class='q-text'>{icon}{i+1}. {soru}</div></div>", unsafe_allow_html=True)
             
-            # Label'da rakam yok, arka planda index+1 ile puanlama
             choice = st.radio(f"{cakra}_{i}", labels, key=key, horizontal=True, index=None, label_visibility="collapsed")
             if choice: cevaplar_cakra[key] = labels.index(choice) + 1
             else: missing_count += 1
@@ -522,7 +513,6 @@ elif st.session_state.page == "Test_Cakra":
             st.session_state.page = "Menu"
             st.rerun()
 
-# (Test_Isi, Test_Nem kodları önceki ile aynı...)
 elif st.session_state.page == "Test_Isi":
     st.title("🔥 Isı Analizi")
     score, missing = render_questions_with_validation(SORULAR_ISI, "isi", st.session_state.submitted_isi)
@@ -561,18 +551,32 @@ elif st.session_state.page == "Rapor":
     tarih = datetime.now().strftime("%d.%m.%Y")
     st.markdown(f"## 📄 Analiz Sonuçları: {st.session_state.user_info.get('ad')}")
     
-    # 1. ÇAKRA GRAFİĞİ (Varsa oluştur)
+    # 1. ÇAKRA GRAFİĞİ (Geliştirilmiş)
     fig_cakra_html = ""
     if st.session_state.results_cakra:
         data = st.session_state.results_cakra
         cakra_names = list(data.keys())
         yavas_vals = [d['yavas_puan'] for d in data.values()]
         asiri_vals = [d['asiri_puan'] for d in data.values()]
+        
         fig_cakra = go.Figure()
-        fig_cakra.add_trace(go.Bar(x=cakra_names, y=yavas_vals, name='Yavaşlık/Blokaj', marker_color='#3498db'))
-        fig_cakra.add_trace(go.Bar(x=cakra_names, y=asiri_vals, name='Aşırı Aktiflik', marker_color='#e74c3c'))
-        fig_cakra.add_shape(type="line", x0=-0.5, x1=len(cakra_names)-0.5, y0=30, y1=30, line=dict(color="gray", width=2, dash="dash"))
-        fig_cakra.update_layout(barmode='group', title="Çakra Enerji Dengesi", height=400, margin=dict(t=40, b=40, l=40, r=40))
+        
+        # Barlar (Soft Renkler)
+        fig_cakra.add_trace(go.Bar(x=cakra_names, y=yavas_vals, name='Blokaj/Yavaş', marker_color='#5DADE2', text=yavas_vals, textposition='auto'))
+        fig_cakra.add_trace(go.Bar(x=cakra_names, y=asiri_vals, name='Aşırı Aktif', marker_color='#EC7063', text=asiri_vals, textposition='auto'))
+        
+        # YEŞİL BANT (20-25 Puan)
+        fig_cakra.add_shape(type="rect", x0=-0.5, x1=len(cakra_names)-0.5, y0=20, y1=25, fillcolor="Green", opacity=0.15, layer="below", line_width=0)
+        
+        # KIRMIZI EŞİK (30 Puan)
+        fig_cakra.add_shape(type="line", x0=-0.5, x1=len(cakra_names)-0.5, y0=30, y1=30, line=dict(color="red", width=2, dash="dot"))
+        
+        # Annotations (Açıklamalar)
+        fig_cakra.add_annotation(x=len(cakra_names)-1, y=22.5, text="DENGELİ (20-25)", showarrow=False, font=dict(size=10, color="green"), xanchor="right")
+        fig_cakra.add_annotation(x=len(cakra_names)-1, y=31, text="KRİTİK (30+)", showarrow=False, font=dict(size=10, color="red"), xanchor="right")
+        
+        fig_cakra.update_layout(barmode='group', title="Çakra Enerji Dengesi Analizi", height=450, margin=dict(t=50, b=50, l=40, r=40), plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(showgrid=True, gridcolor='lightgray', range=[0, 45]))
+        
         fig_cakra_html = fig_cakra.to_html(full_html=False, include_plotlyjs='cdn')
         st.plotly_chart(fig_cakra, use_container_width=True)
         
@@ -581,17 +585,12 @@ elif st.session_state.page == "Rapor":
         st.markdown("### Çakra Durum Tablosu")
         st.dataframe(df_cakra, use_container_width=True)
 
-    # 2. MİZAÇ GRAFİKLERİ (Varsa oluştur)
+    # 2. MİZAÇ GRAFİKLERİ
     fig1_html, fig2_html = "", ""
     if st.session_state.results_genel:
         yuzdeler = st.session_state.genel_yuzdeler
         
-        # --- ÖZEL EKSEN SIRALAMASI ---
-        # İstenen: Top: Nem, Right: Soğuk, Bottom: Kuru, Left: Sıcak
-        # Plotly Polar'da 0 derece Sağ (Doğu) kabul edilir, saat yönünün tersine gider.
-        # Sıralama: Sağ (0) -> Üst (90) -> Sol (180) -> Alt (270)
-        # Sağ: SOĞUKLUK, Üst: NEMLİLİK, Sol: SICAKLIK, Alt: KURULUK
-        
+        # Eksen Sıralaması (NEM=Üst, SOĞUK=Sağ)
         ordered_cats = ["SOĞUKLUK", "NEMLİLİK", "SICAKLIK", "KURULUK"]
         ordered_vals = [yuzdeler.get(k, 0) for k in ordered_cats]
         
@@ -601,44 +600,21 @@ elif st.session_state.page == "Rapor":
         fig1_html = fig1.to_html(full_html=False, include_plotlyjs='cdn')
         st.plotly_chart(fig1, use_container_width=True)
         
-        # Radar Grafik (Eksen Düzeltilmiş)
-        # Döngüyü kapatmak için başa dön
+        # Radar Grafik
         radar_cats = ordered_cats + [ordered_cats[0]]
         radar_vals = ordered_vals + [ordered_vals[0]]
-        
-        fig2 = go.Figure(go.Scatterpolar(
-            r=radar_vals, 
-            theta=radar_cats, 
-            fill='toself',
-            line=dict(color='#8E44AD', width=3)
-        ))
-        # start_angle=0 (Sağ) defaulttur. Direction counterclockwise defaulttur.
-        # Yani: Soğuk(Sağ) -> Nem(Üst) -> Sıcak(Sol) -> Kuru(Alt) tam oturur.
-        fig2.update_layout(
-            polar=dict(radialaxis=dict(visible=True, range=[0, 100])), 
-            height=350, margin=dict(t=40, b=40, l=60, r=60)
-        )
+        fig2 = go.Figure(go.Scatterpolar(r=radar_vals, theta=radar_cats, fill='toself', line=dict(color='#8E44AD', width=3)))
+        fig2.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), height=350, margin=dict(t=40, b=40, l=60, r=60))
         fig2_html = fig2.to_html(full_html=False, include_plotlyjs='cdn')
-        st.plotly_chart(fig2, use_container_width=True)
         
-        # Sonuç Metinleri
         st.info(f"Baskın Mizaç: **{st.session_state.results_genel}**")
         
-    # RAPOR İNDİRME (Her ikisi için çalışır)
+    # RAPOR İNDİRME
     if st.session_state.results_genel or st.session_state.results_cakra:
         detaylar = MIZAC_BILGILERI.get(st.session_state.results_genel, {}) if st.session_state.results_genel else {}
         mizac_adi = st.session_state.results_genel if st.session_state.results_genel else None
         
-        report_html = create_html_report(
-            st.session_state.user_info, 
-            mizac_adi, 
-            detaylar, 
-            tarih, 
-            fig1_html, 
-            fig2_html, 
-            fig_cakra_html, 
-            st.session_state.results_cakra
-        )
+        report_html = create_html_report(st.session_state.user_info, mizac_adi, detaylar, tarih, fig1_html, fig2_html, fig_cakra_html, st.session_state.results_cakra)
         st.download_button("📥 Raporu İndir", data=report_html, file_name="Analiz.html", mime="text/html", type="primary", use_container_width=True)
     
     if st.button("Menüye Dön"): st.session_state.page = "Menu"; st.rerun()
