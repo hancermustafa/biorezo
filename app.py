@@ -86,12 +86,6 @@ st.markdown("""
     .stRadio > div { gap: 0px !important; margin-top: -10px; padding-left: 10px; }
     .stButton button { border-radius: 10px; font-weight: 600; transition: 0.3s; width: 100%; height: 50px; }
     
-    /* ERROR BOX */
-    .error-box {
-        padding: 15px; background-color: #fee; color: #c00; border: 1px solid #fcc;
-        border-radius: 10px; margin-bottom: 15px; font-weight: bold; text-align: center;
-    }
-
     @keyframes shake {
       0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 
       50% { transform: translateX(5px); } 75% { transform: translateX(-5px); } 
@@ -106,7 +100,6 @@ st.markdown("""
 def init_db():
     conn = sqlite3.connect('analiz_gecmisi.db', check_same_thread=False)
     c = conn.cursor()
-    # Mevcut yapıyı koruyoruz, yaş hesaplanıp yas sütununa yazılacak
     c.execute('''CREATE TABLE IF NOT EXISTS sonuclar
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   ad TEXT, yas INTEGER, cinsiyet TEXT, tarih TEXT, 
@@ -136,40 +129,59 @@ def calculate_age(birth_date):
     return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
 
 # ==========================================
-# 3. YARDIMCI MOTORLAR
+# 3. AKILLI DERİN ANALİZ MOTORU
 # ==========================================
 def generate_deep_analysis(mizac, cakra_sonuclar, skorlar_isi, skorlar_nem):
     yorumlar = []
     
-    # 1. Isı/Nem Dengesi
-    if skorlar_isi and skorlar_isi > 80: yorumlar.append("🔥 **Metabolik Ateş Yüksek:** Vücut ısınızın yüksekliği inflamasyona zemin hazırlayabilir.")
-    if skorlar_nem and skorlar_nem > 70: yorumlar.append("💧 **Nem Fazlalığı:** Vücutta ödem ve ağırlık birikimi olabilir. Lenfatik drenaj önerilir.")
-    if skorlar_nem and skorlar_nem < 40: yorumlar.append("🌵 **Kuruluk Hakim:** Cilt ve mukoza kuruluğu artabilir, hidrasyona dikkat ediniz.")
+    # Veri var mı kontrolü (None değilse analiz et)
+    has_isi = skorlar_isi is not None
+    has_nem = skorlar_nem is not None
+    has_mizac = mizac is not None
+    has_cakra = cakra_sonuclar is not None
+
+    # 1. Isı/Nem Dengesi (Sadece test yapıldıysa yorumla)
+    if has_isi and skorlar_isi > 80: 
+        yorumlar.append("🔥 **Metabolik Ateş Yüksek:** Vücut ısınızın yüksekliği inflamasyona zemin hazırlayabilir.")
+    elif has_isi and skorlar_isi < 40:
+        yorumlar.append("❄️ **Metabolik Durgunluk:** Enerji üretiminiz düşük, kan dolaşımını hızlandırıcı aktivitelere ihtiyacınız var.")
+
+    if has_nem and skorlar_nem > 70: 
+        yorumlar.append("💧 **Nem Fazlalığı:** Vücutta ödem ve ağırlık birikimi olabilir. Lenfatik drenaj önerilir.")
+    elif has_nem and skorlar_nem < 40: 
+        yorumlar.append("🌵 **Kuruluk Hakim:** Cilt ve mukoza kuruluğu artabilir, hidrasyona dikkat ediniz.")
 
     # 2. Mizaç Yorumu
-    if mizac == "Safravi": yorumlar.append("🦁 **Safravi:** Lider ruhlu, hızlı karar alan yapı. Karaciğer detoksu şart.")
-    elif mizac == "Demevi": yorumlar.append("🌬️ **Demevi:** Sosyal, neşeli fakat kan basıncı dalgalanmalarına açık.")
-    elif mizac == "Balgami": yorumlar.append("🌊 **Balgami:** Sakin, uyumlu fakat harekete geçmekte zorlanan yapı. Metabolizmayı hızlandırmalısınız.")
-    elif mizac == "Sovdavi": yorumlar.append("🦅 **Sovdavi:** Derin düşünen, hassas yapı. Bağırsak florasını (İkinci beyin) korumalısınız.")
+    if has_mizac:
+        if mizac == "Safravi": yorumlar.append("🦁 **Safravi Mizaç:** Lider ruhlu, hızlı karar alan yapı. Karaciğer detoksu şart.")
+        elif mizac == "Demevi": yorumlar.append("🌬️ **Demevi Mizaç:** Sosyal, neşeli fakat kan basıncı dalgalanmalarına açık.")
+        elif mizac == "Balgami": yorumlar.append("🌊 **Balgami Mizaç:** Sakin, uyumlu fakat harekete geçmekte zorlanan yapı. Metabolizmayı hızlandırmalısınız.")
+        elif mizac == "Sovdavi": yorumlar.append("🦅 **Sovdavi Mizaç:** Derin düşünen, hassas yapı. Bağırsak florasını (İkinci beyin) korumalısınız.")
 
-    # 3. Çakra Kombinasyonu
-    if cakra_sonuclar:
+    # 3. Çakra Kombinasyonu (Sadece mizaç ve çakra ikisi de varsa çapraz analiz yap)
+    if has_cakra:
         kok = cakra_sonuclar.get("KÖK ÇAKRA (Muladhara)", {}).get("durum")
         solar = cakra_sonuclar.get("SOLAR PLEXUS (Manipura)", {}).get("durum")
         
-        if kok and ("Yavaş" in kok) and mizac == "Sovdavi":
-            yorumlar.append("⚠️ **Kök Blokajı:** Toprak mizacı ile birleşen kök çakra blokajı, aşırı kaygı ve güvensizlik yaratabilir.")
-        if solar and ("Aşırı" in solar) and mizac == "Safravi":
-            yorumlar.append("⚠️ **Solar Ateşi:** Safravi mizaç ile aşırı aktif Solar Plexus, öfke patlamalarına ve mide sorunlarına yol açabilir.")
+        # Sadece Çakra yorumu (Mizaç yoksa bile çalışsın)
+        if kok and "Yavaş" in kok:
+            yorumlar.append("⚠️ **Kök Çakra Blokajı:** Aidiyet ve güven hissinde eksiklik yaşanabilir.")
             
-    if not yorumlar: yorumlar.append("✅ Genel enerji akışınız ve mizaç dengeniz stabil görünüyor.")
+        # Çapraz Analiz (Varsa)
+        if has_mizac and mizac == "Sovdavi" and kok and "Yavaş" in kok:
+            yorumlar.append("⚠️ **Kritik Kombinasyon:** Toprak mizacı + Kök blokajı = Aşırı kaygı ve güvensizlik yaratabilir.")
+        if has_mizac and mizac == "Safravi" and solar and "Aşırı" in solar:
+            yorumlar.append("⚠️ **Kritik Kombinasyon:** Safravi mizaç + Aşırı Solar Plexus = Öfke patlamaları ve mide sorunları.")
+            
+    if not yorumlar: 
+        yorumlar.append("✅ Analiz için yeterli veri girişi bekleniyor veya mevcut veriler dengeli.")
     
     return " ".join(yorumlar)
 
 def save_to_db(user_info, test_type, summary_text, detail_data):
     try:
         c = CONN.cursor()
-        tarih = datetime.now().strftime("%Y-%m-%d %H:%M")
+        tarih = datetime.now().strftime("%d.%m.%Y %H:%M")
         detail_json = json.dumps(detail_data, ensure_ascii=False)
         c.execute("INSERT INTO sonuclar (ad, yas, cinsiyet, tarih, tip, ozet, detail_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
                   (user_info['ad'], user_info['yas'], user_info['cinsiyet'], tarih, test_type, summary_text, detail_json))
@@ -187,7 +199,6 @@ def get_image_base64(path):
 # ==========================================
 # 4. TEST VERİLERİ (SABİT)
 # ==========================================
-# (Burada veri setlerinizi kısaltmadan olduğu gibi kullanıyoruz)
 SORULAR_ISI = [
     {"text": "Boş vakitlerinizde ne yaparsınız?", "options": [{"text": "Evde zaman geçirmek", "value": 1}, {"text": "Çoğunlukla evde", "value": 2}, {"text": "Bazen evde bezen dışarda", "value": 3}, {"text": "Genellikle dışarda", "value": 4}, {"text": "Evin dışında", "value": 5}]},
     {"text": "Düzene karşı tutumunuz?", "options": [{"text": "Her zaman temiz ve düzenliyim", "value": 1}, {"text": "Çoğunlukla düzenli", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Dağınıklığı sevmem ama yapmam", "value": 4}, {"text": "Dağınık ama bulurum", "value": 5}]},
@@ -259,11 +270,11 @@ def init_state():
         st.session_state.update({
             "page": "Giriş", "user_info": {}, 
             "results_isi": None, "results_nem": None, "results_genel": None, "results_cakra": None,
-            "genel_skorlar": {}, "genel_yuzdeler": {}, "scores": {"isi": 0, "nem": 0},
+            "genel_skorlar": {}, "genel_yuzdeler": {}, "scores": {"isi": None, "nem": None},
             "submitted_genel": False, "submitted_isi": False, "submitted_nem": False, "submitted_cakra": False
         })
 
-# --- SORU RENDER MOTORU (DÜZELTİLMİŞ) ---
+# --- SORU RENDER MOTORU ---
 def render_questions_pro(soru_listesi, key_prefix, submitted):
     total_score = 0
     missing_count = 0
@@ -276,7 +287,7 @@ def render_questions_pro(soru_listesi, key_prefix, submitted):
         if val is not None: 
             box_class = "q-filled"
         elif submitted: 
-            box_class = "q-error" # Gönderildi ve boşsa kırmızı
+            box_class = "q-error"
         
         st.markdown(f"""<div class='q-box {box_class}'><div class='q-text'>{i+1}. {soru['text']}</div></div>""", unsafe_allow_html=True)
         
@@ -296,12 +307,12 @@ def render_questions_pro(soru_listesi, key_prefix, submitted):
             
     return total_score, missing_count
 
-# --- HTML RAPOR ---
+# --- HTML RAPOR (PARÇALI OLUŞTURMA YETENEĞİ) ---
 def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, fig_cakra_html, cakra_sonuclar, derin_analiz):
     img_data = get_image_base64(LOGO_LOCAL)
     img_src = f"data:image/jpeg;base64,{img_data}" if img_data else LOGO_URL
     
-    mizac_display = mizac if mizac else "Henüz Belirlenmedi"
+    mizac_display = mizac if mizac else "Belirlenmedi"
     detaylar = detaylar if detaylar else {}
     
     risk_html = ""
@@ -429,10 +440,13 @@ with st.sidebar:
     st.divider()
     if st.button("🗄️ Hasta Geçmişi"): st.session_state.page = "History"; st.rerun()
     
-    if st.button("📄 Sonuç Raporu", type="primary"):
-        if st.session_state.results_genel or st.session_state.results_cakra:
+    # PARÇALI RAPOR MANTIĞI: Herhangi biri varsa rapor alabilir
+    any_result = any([st.session_state.results_genel, st.session_state.results_isi, st.session_state.results_nem, st.session_state.results_cakra])
+    
+    if st.button("📄 Sonuç Raporu", type="primary", disabled=not any_result):
+        if any_result:
             st.session_state.page = "Rapor"; st.rerun()
-        else: st.warning("Henüz test yapılmadı.")
+        else: st.warning("En az bir test tamamlanmalı.")
         
     if st.button("🔄 Oturumu Sıfırla", type="secondary"): reset_app()
 
@@ -447,8 +461,8 @@ if st.session_state.page == "Giriş":
             c1_ic, c2_ic = st.columns(2)
             with c1_ic: cinsiyet = st.selectbox("Cinsiyet", ["Kadın", "Erkek"])
             with c2_ic: 
-                # PRO DOKUNUŞ: Doğum Tarihi ile Yaş Hesaplama
-                dogum_tarihi = st.date_input("Doğum Tarihi", min_value=date(1940, 1, 1), max_value=date.today())
+                # PRO DOKUNUŞ: Format sabitlendi (DD/MM/YYYY)
+                dogum_tarihi = st.date_input("Doğum Tarihi", min_value=date(1940, 1, 1), max_value=date.today(), format="DD/MM/YYYY")
             
             yas = calculate_age(dogum_tarihi)
             
@@ -461,7 +475,6 @@ if st.session_state.page == "Giriş":
 
 elif st.session_state.page == "History":
     st.title("🗄️ Hasta Kayıtları")
-    
     c = CONN.cursor()
     c.execute("SELECT * FROM sonuclar ORDER BY id DESC")
     data = c.fetchall()
@@ -469,7 +482,7 @@ elif st.session_state.page == "History":
     if data:
         df = pd.DataFrame(data, columns=["ID", "Ad", "Yaş", "Cinsiyet", "Tarih", "Tip", "Özet", "JSON"])
         
-        # PRO DOKUNUŞ: EXCEL İNDİRME
+        # EXCEL İNDİRME
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
             df.drop(columns=["JSON"]).to_excel(writer, index=False, sheet_name='Hastalar')
@@ -481,7 +494,6 @@ elif st.session_state.page == "History":
             mime="application/vnd.ms-excel",
             type="primary"
         )
-        
         st.dataframe(df.drop(columns=["JSON"]), use_container_width=True)
     else:
         st.info("Henüz kayıt bulunmamaktadır.")
@@ -511,7 +523,6 @@ elif st.session_state.page == "Test_Isi":
     
     score, missing_count = render_questions_pro(SORULAR_ISI, "isi", st.session_state.submitted_isi)
     
-    # PRO DOKUNUŞ: EKSİK SORU UYARISI
     if st.session_state.submitted_isi and missing_count > 0:
         st.error(f"⚠️ Toplam {missing_count} adet soru boş bırakıldı. Lütfen kırmızı ile işaretlenen alanları doldurunuz.")
 
@@ -581,7 +592,8 @@ elif st.session_state.page == "Test_Genel":
                 st.session_state.genel_yuzdeler = yuzdeler
                 st.session_state.genel_skorlar = skorlar
                 
-                analiz_ozeti = generate_deep_analysis(mizac, None, 0, 0)
+                # Sadece genel test yapıldığında diğerleri yoksa None gönder
+                analiz_ozeti = generate_deep_analysis(mizac, None, None, None)
                 save_to_db(st.session_state.user_info, "Mizaç", analiz_ozeti, yuzdeler)
                 
                 st.success("Mizaç analizi tamamlandı!"); time.sleep(1); st.session_state.page = "Menu"; st.rerun()
@@ -620,7 +632,8 @@ elif st.session_state.page == "Test_Cakra":
             st.session_state.submitted_cakra = True
             if missing_count == 0:
                 st.session_state.results_cakra = calculate_cakra_results(cevaplar_cakra)
-                analiz_ozeti = generate_deep_analysis(st.session_state.results_genel, st.session_state.results_cakra, 0, 0)
+                # Çakra bittiğinde diğer veriler olmayabilir, None gönder
+                analiz_ozeti = generate_deep_analysis(st.session_state.results_genel, st.session_state.results_cakra, st.session_state.scores.get("isi"), st.session_state.scores.get("nem"))
                 save_to_db(st.session_state.user_info, "Çakra", analiz_ozeti, st.session_state.results_cakra)
                 st.success("Kaydedildi!"); time.sleep(1); st.session_state.page = "Menu"; st.rerun()
             else: st.rerun()
@@ -631,14 +644,16 @@ elif st.session_state.page == "Rapor":
     tarih = datetime.now().strftime("%d.%m.%Y")
     st.markdown(f"## 📄 Analiz Sonuçları: {st.session_state.user_info.get('ad')}")
     
+    # 1. AKILLI DERİN ANALİZ (Var olan datayı kullanır)
     derin_analiz = generate_deep_analysis(
         st.session_state.results_genel, 
         st.session_state.results_cakra,
-        st.session_state.scores.get("isi", 0),
-        st.session_state.scores.get("nem", 0)
+        st.session_state.scores.get("isi"), # None ise motor anlar
+        st.session_state.scores.get("nem")
     )
     st.info(f"🧠 **Uzman Yorumu:** {derin_analiz}")
 
+    # 2. GRAFİKLER (Varsa oluştur, yoksa boş string geç)
     fig_cakra_html = ""
     if st.session_state.results_cakra:
         data = st.session_state.results_cakra
@@ -680,7 +695,10 @@ elif st.session_state.page == "Rapor":
 
         st.info(f"Baskın Mizaç: **{st.session_state.results_genel}**")
 
-    if st.session_state.results_genel or st.session_state.results_cakra:
+    # 3. HTML RAPOR OLUŞTURMA (Hangi veri varsa onunla)
+    any_result = any([st.session_state.results_genel, st.session_state.results_cakra, st.session_state.results_isi])
+    
+    if any_result:
         detaylar = MIZAC_BILGILERI.get(st.session_state.results_genel, {}) if st.session_state.results_genel else {}
         mizac_adi = st.session_state.results_genel if st.session_state.results_genel else None
         
