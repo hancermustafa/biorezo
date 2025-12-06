@@ -21,12 +21,18 @@ PLOTLY_CONFIG = {
     'showTips': False
 }
 
-# --- CSS: PRO TASARIM ---
+# --- CSS: PRO TASARIM VE GİZLEME (GÜNCELLENDİ) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
 
+    /* --- GİZLEME KOMUTLARI (BURASI EKLENDİ) --- */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stDeployButton {display:none;}
+    
     /* MENU KARTLARI */
     .menu-card {
         background: linear-gradient(145deg, #ffffff, #f0f2f5);
