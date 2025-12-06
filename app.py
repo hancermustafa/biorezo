@@ -21,15 +21,15 @@ PLOTLY_CONFIG = {
     'showTips': False
 }
 
-# --- CSS: PRO TASARIM VE TAM GİZLEME (GÜNCELLENDİ) ---
+# --- CSS: PRO TASARIM VE TAM GİZLEME (GÜNCELLENMİŞ VERSİYON) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
 
-    /* --- GİZLEME KOMUTLARI (Mobildeki 'Hosted with Streamlit' dahil) --- */
+    /* --- STREAMLIT SİSTEM GİZLEME KOMUTLARI --- */
     
-    /* 1. Alt Bilgi (Footer) - O kırmızı şeridi ve yazıları yok eder */
+    /* 1. Alt Bilgi (Footer) - 'Hosted with Streamlit' şeridini yok eder */
     footer {
         visibility: hidden !important;
         display: none !important;
@@ -37,15 +37,17 @@ st.markdown("""
     }
     
     /* 2. Üst Header ve Hamburger Menü */
-    header {
+    header, [data-testid="stHeader"] {
         visibility: hidden !important;
         display: none !important;
+        height: 0px !important;
     }
     
-    /* 3. Sağ üstteki 'Manage App' ve Araç Çubuğu */
-    [data-testid="stToolbar"] {
+    /* 3. 'Manage App' ve Sağ Üst Araç Çubuğu */
+    [data-testid="stToolbar"], [data-testid="manage-app-button"] {
         visibility: hidden !important;
         display: none !important;
+        height: 0px !important;
     }
     
     /* 4. Deploy Butonu */
@@ -53,22 +55,24 @@ st.markdown("""
         display: none !important;
     }
     
-    /* 5. Görüntüleyici Rozetleri */
+    /* 5. Görüntüleyici/Runner Rozetleri */
     div[data-testid="stStatusWidget"] {
         display: none !important;
     }
     
-    /* 6. Yukarıdaki renkli dekorasyon çizgisini gizle */
+    /* 6. Üstteki renkli dekorasyon çizgisini gizle */
     div[data-testid="stDecoration"] {
         display: none !important;
     }
 
-    /* Ana içerik padding ayarı (Üst boşluğu almak için) */
+    /* Ana içerik padding ayarı (Üstteki boşluğu almak için) */
     .main .block-container {
-        padding-top: 2rem !important;
+        padding-top: 1rem !important;
         padding-bottom: 1rem !important;
     }
     
+    /* --- UYGULAMA İÇİ TASARIM --- */
+
     /* MENU KARTLARI */
     .menu-card {
         background: linear-gradient(145deg, #ffffff, #f0f2f5);
@@ -354,7 +358,7 @@ def render_questions_pro(soru_listesi, key_prefix, submitted):
             
     return total_score, missing_count
 
-# --- HTML RAPOR ---
+# --- HTML RAPOR (PARÇALI OLUŞTURMA YETENEĞİ) ---
 def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, fig_cakra_html, cakra_sonuclar, derin_analiz):
     img_data = get_image_base64(LOGO_LOCAL)
     img_src = f"data:image/jpeg;base64,{img_data}" if img_data else LOGO_URL
