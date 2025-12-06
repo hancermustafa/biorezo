@@ -21,41 +21,48 @@ PLOTLY_CONFIG = {
     'showTips': False
 }
 
-# --- CSS: PRO TASARIM VE TAM GİZLEME ---
+# --- CSS: PRO TASARIM VE TAM GİZLEME (GÜNCELLENDİ) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
 
-    /* --- TAM GİZLEME KOMUTLARI (Manage App Dahil) --- */
+    /* --- GİZLEME KOMUTLARI (Mobildeki 'Hosted with Streamlit' dahil) --- */
     
-    /* 1. Üstteki renkli şerit ve hamburger menü */
-    header[data-testid="stHeader"] {
-        display: none !important;
-        visibility: hidden !important;
-    }
-    
-    /* 2. Sağ üstteki ayarlar (Toolbar) */
-    .stAppToolbar {
-        display: none !important;
-    }
-
-    /* 3. En alttaki 'Made with Streamlit' ve 'Manage app' alanları */
+    /* 1. Alt Bilgi (Footer) - O kırmızı şeridi ve yazıları yok eder */
     footer {
-        display: none !important;
         visibility: hidden !important;
+        display: none !important;
+        height: 0px !important;
     }
     
-    /* 4. Ekstra Deploy butonları */
+    /* 2. Üst Header ve Hamburger Menü */
+    header {
+        visibility: hidden !important;
+        display: none !important;
+    }
+    
+    /* 3. Sağ üstteki 'Manage App' ve Araç Çubuğu */
+    [data-testid="stToolbar"] {
+        visibility: hidden !important;
+        display: none !important;
+    }
+    
+    /* 4. Deploy Butonu */
     .stDeployButton {
         display: none !important;
     }
     
-    /* 5. Görüntüleyici Rozetleri (Viewer Badge) */
+    /* 5. Görüntüleyici Rozetleri */
     div[data-testid="stStatusWidget"] {
         display: none !important;
     }
     
+    /* 6. Yukarıdaki renkli dekorasyon çizgisini gizle */
+    div[data-testid="stDecoration"] {
+        display: none !important;
+    }
+
     /* Ana içerik padding ayarı (Üst boşluğu almak için) */
     .main .block-container {
         padding-top: 2rem !important;
