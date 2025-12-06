@@ -134,47 +134,50 @@ def calculate_age(birth_date):
 def generate_deep_analysis(mizac, cakra_sonuclar, skorlar_isi, skorlar_nem):
     yorumlar = []
     
-    # Veri var mı kontrolü (None değilse analiz et)
+    # Güvenli Veri Kontrolü
     has_isi = skorlar_isi is not None
     has_nem = skorlar_nem is not None
     has_mizac = mizac is not None
     has_cakra = cakra_sonuclar is not None
 
-    # 1. Isı/Nem Dengesi (Sadece test yapıldıysa yorumla)
-    if has_isi and skorlar_isi > 80: 
-        yorumlar.append("🔥 **Metabolik Ateş Yüksek:** Vücut ısınızın yüksekliği inflamasyona zemin hazırlayabilir.")
-    elif has_isi and skorlar_isi < 40:
-        yorumlar.append("❄️ **Metabolik Durgunluk:** Enerji üretiminiz düşük, kan dolaşımını hızlandırıcı aktivitelere ihtiyacınız var.")
+    # 1. Isı Dengesi Yorumları
+    if has_isi:
+        if skorlar_isi > 80: 
+            yorumlar.append("🔥 **Metabolik Ateş Yüksek:** Vücut ısınızın yüksekliği inflamasyona zemin hazırlayabilir.")
+        elif skorlar_isi < 40:
+            yorumlar.append("❄️ **Metabolik Durgunluk:** Enerji üretiminiz düşük, kan dolaşımını hızlandırıcı aktivitelere ihtiyacınız var.")
 
-    if has_nem and skorlar_nem > 70: 
-        yorumlar.append("💧 **Nem Fazlalığı:** Vücutta ödem ve ağırlık birikimi olabilir. Lenfatik drenaj önerilir.")
-    elif has_nem and skorlar_nem < 40: 
-        yorumlar.append("🌵 **Kuruluk Hakim:** Cilt ve mukoza kuruluğu artabilir, hidrasyona dikkat ediniz.")
+    # 2. Nem Dengesi Yorumları
+    if has_nem:
+        if skorlar_nem > 70: 
+            yorumlar.append("💧 **Nem Fazlalığı:** Vücutta ödem ve ağırlık birikimi olabilir. Lenfatik drenaj önerilir.")
+        elif skorlar_nem < 40: 
+            yorumlar.append("🌵 **Kuruluk Hakim:** Cilt ve mukoza kuruluğu artabilir, hidrasyona dikkat ediniz.")
 
-    # 2. Mizaç Yorumu
+    # 3. Mizaç Yorumu
     if has_mizac:
         if mizac == "Safravi": yorumlar.append("🦁 **Safravi Mizaç:** Lider ruhlu, hızlı karar alan yapı. Karaciğer detoksu şart.")
         elif mizac == "Demevi": yorumlar.append("🌬️ **Demevi Mizaç:** Sosyal, neşeli fakat kan basıncı dalgalanmalarına açık.")
         elif mizac == "Balgami": yorumlar.append("🌊 **Balgami Mizaç:** Sakin, uyumlu fakat harekete geçmekte zorlanan yapı. Metabolizmayı hızlandırmalısınız.")
         elif mizac == "Sovdavi": yorumlar.append("🦅 **Sovdavi Mizaç:** Derin düşünen, hassas yapı. Bağırsak florasını (İkinci beyin) korumalısınız.")
 
-    # 3. Çakra Kombinasyonu (Sadece mizaç ve çakra ikisi de varsa çapraz analiz yap)
+    # 4. Çakra ve Kombinasyon Yorumları
     if has_cakra:
         kok = cakra_sonuclar.get("KÖK ÇAKRA (Muladhara)", {}).get("durum")
         solar = cakra_sonuclar.get("SOLAR PLEXUS (Manipura)", {}).get("durum")
         
-        # Sadece Çakra yorumu (Mizaç yoksa bile çalışsın)
+        # Sadece Çakra
         if kok and "Yavaş" in kok:
             yorumlar.append("⚠️ **Kök Çakra Blokajı:** Aidiyet ve güven hissinde eksiklik yaşanabilir.")
             
-        # Çapraz Analiz (Varsa)
+        # Çapraz Analiz (Mizaç + Çakra)
         if has_mizac and mizac == "Sovdavi" and kok and "Yavaş" in kok:
             yorumlar.append("⚠️ **Kritik Kombinasyon:** Toprak mizacı + Kök blokajı = Aşırı kaygı ve güvensizlik yaratabilir.")
         if has_mizac and mizac == "Safravi" and solar and "Aşırı" in solar:
             yorumlar.append("⚠️ **Kritik Kombinasyon:** Safravi mizaç + Aşırı Solar Plexus = Öfke patlamaları ve mide sorunları.")
             
     if not yorumlar: 
-        yorumlar.append("✅ Analiz için yeterli veri girişi bekleniyor veya mevcut veriler dengeli.")
+        yorumlar.append("✅ Analiz için veri girişi bekleniyor.")
     
     return " ".join(yorumlar)
 
@@ -186,7 +189,7 @@ def save_to_db(user_info, test_type, summary_text, detail_data):
         c.execute("INSERT INTO sonuclar (ad, yas, cinsiyet, tarih, tip, ozet, detail_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
                   (user_info['ad'], user_info['yas'], user_info['cinsiyet'], tarih, test_type, summary_text, detail_json))
         CONN.commit()
-        st.toast("✅ Kayıt Veritabanına İşlendi!", icon="💾")
+        st.toast(f"✅ {test_type} Sonucu Veritabanına İşlendi!", icon="💾")
     except Exception as e:
         st.error(f"Kayıt Hatası: {e}")
 
@@ -263,9 +266,10 @@ SORULAR_CAKRA = {
 }
 
 # ==========================================
-# 5. UYGULAMA MANTIĞI
+# 5. UYGULAMA MANTIĞI VE NAVİGASYON
 # ==========================================
 def init_state():
+    # User Info yoksa sıfırla, ama varsa koru (Navigasyon hatasını önler)
     if "user_info" not in st.session_state:
         st.session_state.update({
             "page": "Giriş", "user_info": {}, 
@@ -273,6 +277,9 @@ def init_state():
             "genel_skorlar": {}, "genel_yuzdeler": {}, "scores": {"isi": None, "nem": None},
             "submitted_genel": False, "submitted_isi": False, "submitted_nem": False, "submitted_cakra": False
         })
+    # Sayfa kontrolü (Hata durumunda menüye at)
+    if "page" not in st.session_state:
+        st.session_state.page = "Giriş"
 
 # --- SORU RENDER MOTORU ---
 def render_questions_pro(soru_listesi, key_prefix, submitted):
@@ -415,7 +422,9 @@ def calculate_cakra_results(answers):
         sonuclar[cakra_adi] = {"yavas_puan": yavas_toplam, "asiri_puan": asiri_toplam, "durum": durum}
     return sonuclar
 
-def reset_app(): st.session_state.clear(); st.rerun()
+def reset_app(): 
+    st.session_state.clear()
+    st.rerun()
 
 # ==========================================
 # 7. UYGULAMA AKIŞI (MAIN)
@@ -426,8 +435,15 @@ with st.sidebar:
     if os.path.exists(LOGO_LOCAL): st.image(LOGO_LOCAL, width=140)
     else: st.image(LOGO_URL, width=140)
     st.markdown("### Dr. Sait SEVİNÇ")
-    if st.session_state.user_info: st.success(f"👤 {st.session_state.user_info.get('ad')}")
-    if st.button("🏠 Ana Menü"): st.session_state.page = "Menu"; st.rerun()
+    
+    # Kullanıcı Adı ve Navigasyon Kontrolü
+    if st.session_state.user_info: 
+        st.success(f"👤 {st.session_state.user_info.get('ad')}")
+    
+    if st.button("🏠 Ana Menü"): 
+        st.session_state.page = "Menu"
+        st.rerun()
+        
     st.divider()
     
     chk = lambda x: "✅" if x else "⬜"
@@ -438,17 +454,21 @@ with st.sidebar:
     st.markdown(f"{chk(st.session_state.results_cakra)} Çakra Enerjisi")
     
     st.divider()
-    if st.button("🗄️ Hasta Geçmişi"): st.session_state.page = "History"; st.rerun()
+    if st.button("🗄️ Hasta Geçmişi"): 
+        st.session_state.page = "History"
+        st.rerun()
     
     # PARÇALI RAPOR MANTIĞI: Herhangi biri varsa rapor alabilir
     any_result = any([st.session_state.results_genel, st.session_state.results_isi, st.session_state.results_nem, st.session_state.results_cakra])
     
     if st.button("📄 Sonuç Raporu", type="primary", disabled=not any_result):
         if any_result:
-            st.session_state.page = "Rapor"; st.rerun()
+            st.session_state.page = "Rapor"
+            st.rerun()
         else: st.warning("En az bir test tamamlanmalı.")
         
-    if st.button("🔄 Oturumu Sıfırla", type="secondary"): reset_app()
+    if st.button("🔄 Oturumu Sıfırla", type="secondary"): 
+        reset_app()
 
 # --- SAYFALAR ---
 if st.session_state.page == "Giriş":
@@ -498,9 +518,15 @@ elif st.session_state.page == "History":
     else:
         st.info("Henüz kayıt bulunmamaktadır.")
     
-    if st.button("Geri"): st.session_state.page = "Menu"; st.rerun()
+    if st.button("Geri"): 
+        st.session_state.page = "Menu"
+        st.rerun()
 
 elif st.session_state.page == "Menu":
+    if not st.session_state.user_info: # Güvenlik önlemi
+        st.session_state.page = "Giriş"
+        st.rerun()
+
     st.subheader(f"Hoşgeldiniz, {st.session_state.user_info['ad']} (Yaş: {st.session_state.user_info['yas']})")
     c1, c2 = st.columns(2)
     c3, c4 = st.columns(2)
@@ -511,7 +537,9 @@ elif st.session_state.page == "Menu":
         btn_txt = "Sonuçları Gör" if done else "Başla"
         with col:
             st.markdown(f"""<div class="{css}">{badge}<span class="card-icon">{icon}</span><span class="card-title">{title}</span><span class="card-desc">{desc}</span></div>""", unsafe_allow_html=True)
-            if st.button(btn_txt, key=key, use_container_width=True): st.session_state.page = target; st.rerun()
+            if st.button(btn_txt, key=key, use_container_width=True): 
+                st.session_state.page = target
+                st.rerun()
 
     create_card(c1, "Genel Mizaç", "🦁", "Baskın element tespiti.", "btn_gnl", "Test_Genel", st.session_state.results_genel)
     create_card(c2, "Sıcaklık / Soğukluk", "🔥", "Metabolizma ısısı.", "btn_isi", "Test_Isi", st.session_state.results_isi)
@@ -533,10 +561,19 @@ elif st.session_state.page == "Test_Isi":
             if missing_count == 0:
                 st.session_state.results_isi = calculate_result_isi(score)
                 st.session_state.scores["isi"] = score
-                st.success("Kaydedildi!"); time.sleep(0.5); st.session_state.page = "Menu"; st.rerun()
+                
+                # DB KAYIT (Isı tek başına da kaydedilsin)
+                analiz_ozeti = generate_deep_analysis(None, None, score, None)
+                save_to_db(st.session_state.user_info, "Isı Dengesi", analiz_ozeti, {"Puan": score, "Sonuç": st.session_state.results_isi})
+                
+                time.sleep(1) # Toast mesajı görünsün
+                st.session_state.page = "Menu"
+                st.rerun()
             else: st.rerun()
     with c2:
-        if st.button("İptal"): st.session_state.page = "Menu"; st.rerun()
+        if st.button("İptal"): 
+            st.session_state.page = "Menu"
+            st.rerun()
 
 elif st.session_state.page == "Test_Nem":
     st.title("💧 Nem Analizi (20 Soru)")
@@ -553,10 +590,19 @@ elif st.session_state.page == "Test_Nem":
             if missing_count == 0:
                 st.session_state.results_nem = calculate_result_nem(score)
                 st.session_state.scores["nem"] = score
-                st.success("Kaydedildi!"); time.sleep(0.5); st.session_state.page = "Menu"; st.rerun()
+                
+                # DB KAYIT (Nem tek başına)
+                analiz_ozeti = generate_deep_analysis(None, None, None, score)
+                save_to_db(st.session_state.user_info, "Nem Dengesi", analiz_ozeti, {"Puan": score, "Sonuç": st.session_state.results_nem})
+                
+                time.sleep(1)
+                st.session_state.page = "Menu"
+                st.rerun()
             else: st.rerun()
     with c2:
-        if st.button("İptal"): st.session_state.page = "Menu"; st.rerun()
+        if st.button("İptal"): 
+            st.session_state.page = "Menu"
+            st.rerun()
 
 elif st.session_state.page == "Test_Genel":
     st.title("🦁 Genel Mizaç Testi")
@@ -592,14 +638,18 @@ elif st.session_state.page == "Test_Genel":
                 st.session_state.genel_yuzdeler = yuzdeler
                 st.session_state.genel_skorlar = skorlar
                 
-                # Sadece genel test yapıldığında diğerleri yoksa None gönder
+                # DB KAYIT
                 analiz_ozeti = generate_deep_analysis(mizac, None, None, None)
                 save_to_db(st.session_state.user_info, "Mizaç", analiz_ozeti, yuzdeler)
                 
-                st.success("Mizaç analizi tamamlandı!"); time.sleep(1); st.session_state.page = "Menu"; st.rerun()
+                time.sleep(1)
+                st.session_state.page = "Menu"
+                st.rerun()
             else: st.rerun()
     with c2:
-        if st.button("İptal"): st.session_state.page = "Menu"; st.rerun()
+        if st.button("İptal"): 
+            st.session_state.page = "Menu"
+            st.rerun()
 
 elif st.session_state.page == "Test_Cakra":
     st.title("🌀 Çakra Enerji Analizi")
@@ -632,13 +682,20 @@ elif st.session_state.page == "Test_Cakra":
             st.session_state.submitted_cakra = True
             if missing_count == 0:
                 st.session_state.results_cakra = calculate_cakra_results(cevaplar_cakra)
-                # Çakra bittiğinde diğer veriler olmayabilir, None gönder
+                
+                # DB KAYIT
+                # Varsa mizaç verisini de kullan
                 analiz_ozeti = generate_deep_analysis(st.session_state.results_genel, st.session_state.results_cakra, st.session_state.scores.get("isi"), st.session_state.scores.get("nem"))
                 save_to_db(st.session_state.user_info, "Çakra", analiz_ozeti, st.session_state.results_cakra)
-                st.success("Kaydedildi!"); time.sleep(1); st.session_state.page = "Menu"; st.rerun()
+                
+                time.sleep(1)
+                st.session_state.page = "Menu"
+                st.rerun()
             else: st.rerun()
     with c2:
-        if st.button("İptal"): st.session_state.page = "Menu"; st.rerun()
+        if st.button("İptal"): 
+            st.session_state.page = "Menu"
+            st.rerun()
 
 elif st.session_state.page == "Rapor":
     tarih = datetime.now().strftime("%d.%m.%Y")
@@ -648,12 +705,12 @@ elif st.session_state.page == "Rapor":
     derin_analiz = generate_deep_analysis(
         st.session_state.results_genel, 
         st.session_state.results_cakra,
-        st.session_state.scores.get("isi"), # None ise motor anlar
+        st.session_state.scores.get("isi"), 
         st.session_state.scores.get("nem")
     )
     st.info(f"🧠 **Uzman Yorumu:** {derin_analiz}")
 
-    # 2. GRAFİKLER (Varsa oluştur, yoksa boş string geç)
+    # 2. GRAFİKLER (Varsa oluştur)
     fig_cakra_html = ""
     if st.session_state.results_cakra:
         data = st.session_state.results_cakra
@@ -695,8 +752,8 @@ elif st.session_state.page == "Rapor":
 
         st.info(f"Baskın Mizaç: **{st.session_state.results_genel}**")
 
-    # 3. HTML RAPOR OLUŞTURMA (Hangi veri varsa onunla)
-    any_result = any([st.session_state.results_genel, st.session_state.results_cakra, st.session_state.results_isi])
+    # 3. HTML RAPOR OLUŞTURMA
+    any_result = any([st.session_state.results_genel, st.session_state.results_cakra, st.session_state.results_isi, st.session_state.results_nem])
     
     if any_result:
         detaylar = MIZAC_BILGILERI.get(st.session_state.results_genel, {}) if st.session_state.results_genel else {}
@@ -705,4 +762,6 @@ elif st.session_state.page == "Rapor":
         report_html = create_html_report(st.session_state.user_info, mizac_adi, detaylar, tarih, fig1_html, fig2_html, fig_cakra_html, st.session_state.results_cakra, derin_analiz)
         st.download_button("📥 Tam Raporu İndir (HTML)", data=report_html, file_name=f"Analiz_{st.session_state.user_info.get('ad')}.html", mime="text/html", type="primary", use_container_width=True)
     
-    if st.button("Menüye Dön"): st.session_state.page = "Menu"; st.rerun()
+    if st.button("Menüye Dön"): 
+        st.session_state.page = "Menu"
+        st.rerun()
