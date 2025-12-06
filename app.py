@@ -21,17 +21,46 @@ PLOTLY_CONFIG = {
     'showTips': False
 }
 
-# --- CSS: PRO TASARIM VE GİZLEME (GÜNCELLENDİ) ---
+# --- CSS: PRO TASARIM VE TAM GİZLEME ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
 
-    /* --- GİZLEME KOMUTLARI (BURASI EKLENDİ) --- */
-    #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
-    .stDeployButton {display:none;}
+    /* --- TAM GİZLEME KOMUTLARI (Manage App Dahil) --- */
+    
+    /* 1. Üstteki renkli şerit ve hamburger menü */
+    header[data-testid="stHeader"] {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    
+    /* 2. Sağ üstteki ayarlar (Toolbar) */
+    .stAppToolbar {
+        display: none !important;
+    }
+
+    /* 3. En alttaki 'Made with Streamlit' ve 'Manage app' alanları */
+    footer {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    
+    /* 4. Ekstra Deploy butonları */
+    .stDeployButton {
+        display: none !important;
+    }
+    
+    /* 5. Görüntüleyici Rozetleri (Viewer Badge) */
+    div[data-testid="stStatusWidget"] {
+        display: none !important;
+    }
+    
+    /* Ana içerik padding ayarı (Üst boşluğu almak için) */
+    .main .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 1rem !important;
+    }
     
     /* MENU KARTLARI */
     .menu-card {
@@ -275,7 +304,6 @@ SORULAR_CAKRA = {
 # 5. UYGULAMA MANTIĞI VE NAVİGASYON
 # ==========================================
 def init_state():
-    # User Info yoksa sıfırla, ama varsa koru (Navigasyon hatasını önler)
     if "user_info" not in st.session_state:
         st.session_state.update({
             "page": "Giriş", "user_info": {}, 
@@ -283,7 +311,6 @@ def init_state():
             "genel_skorlar": {}, "genel_yuzdeler": {}, "scores": {"isi": None, "nem": None},
             "submitted_genel": False, "submitted_isi": False, "submitted_nem": False, "submitted_cakra": False
         })
-    # Sayfa kontrolü (Hata durumunda menüye at)
     if "page" not in st.session_state:
         st.session_state.page = "Giriş"
 
@@ -320,7 +347,7 @@ def render_questions_pro(soru_listesi, key_prefix, submitted):
             
     return total_score, missing_count
 
-# --- HTML RAPOR (PARÇALI OLUŞTURMA YETENEĞİ) ---
+# --- HTML RAPOR ---
 def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, fig_cakra_html, cakra_sonuclar, derin_analiz):
     img_data = get_image_base64(LOGO_LOCAL)
     img_src = f"data:image/jpeg;base64,{img_data}" if img_data else LOGO_URL
@@ -442,7 +469,6 @@ with st.sidebar:
     else: st.image(LOGO_URL, width=140)
     st.markdown("### Dr. Sait SEVİNÇ")
     
-    # Kullanıcı Adı ve Navigasyon Kontrolü
     if st.session_state.user_info: 
         st.success(f"👤 {st.session_state.user_info.get('ad')}")
     
@@ -464,7 +490,6 @@ with st.sidebar:
         st.session_state.page = "History"
         st.rerun()
     
-    # PARÇALI RAPOR MANTIĞI: Herhangi biri varsa rapor alabilir
     any_result = any([st.session_state.results_genel, st.session_state.results_isi, st.session_state.results_nem, st.session_state.results_cakra])
     
     if st.button("📄 Sonuç Raporu", type="primary", disabled=not any_result):
@@ -487,7 +512,6 @@ if st.session_state.page == "Giriş":
             c1_ic, c2_ic = st.columns(2)
             with c1_ic: cinsiyet = st.selectbox("Cinsiyet", ["Kadın", "Erkek"])
             with c2_ic: 
-                # PRO DOKUNUŞ: Format sabitlendi (DD/MM/YYYY)
                 dogum_tarihi = st.date_input("Doğum Tarihi", min_value=date(1940, 1, 1), max_value=date.today(), format="DD/MM/YYYY")
             
             yas = calculate_age(dogum_tarihi)
@@ -508,7 +532,6 @@ elif st.session_state.page == "History":
     if data:
         df = pd.DataFrame(data, columns=["ID", "Ad", "Yaş", "Cinsiyet", "Tarih", "Tip", "Özet", "JSON"])
         
-        # EXCEL İNDİRME
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
             df.drop(columns=["JSON"]).to_excel(writer, index=False, sheet_name='Hastalar')
@@ -529,7 +552,7 @@ elif st.session_state.page == "History":
         st.rerun()
 
 elif st.session_state.page == "Menu":
-    if not st.session_state.user_info: # Güvenlik önlemi
+    if not st.session_state.user_info:
         st.session_state.page = "Giriş"
         st.rerun()
 
@@ -568,11 +591,10 @@ elif st.session_state.page == "Test_Isi":
                 st.session_state.results_isi = calculate_result_isi(score)
                 st.session_state.scores["isi"] = score
                 
-                # DB KAYIT (Isı tek başına da kaydedilsin)
                 analiz_ozeti = generate_deep_analysis(None, None, score, None)
                 save_to_db(st.session_state.user_info, "Isı Dengesi", analiz_ozeti, {"Puan": score, "Sonuç": st.session_state.results_isi})
                 
-                time.sleep(1) # Toast mesajı görünsün
+                time.sleep(1)
                 st.session_state.page = "Menu"
                 st.rerun()
             else: st.rerun()
@@ -597,7 +619,6 @@ elif st.session_state.page == "Test_Nem":
                 st.session_state.results_nem = calculate_result_nem(score)
                 st.session_state.scores["nem"] = score
                 
-                # DB KAYIT (Nem tek başına)
                 analiz_ozeti = generate_deep_analysis(None, None, None, score)
                 save_to_db(st.session_state.user_info, "Nem Dengesi", analiz_ozeti, {"Puan": score, "Sonuç": st.session_state.results_nem})
                 
@@ -644,7 +665,6 @@ elif st.session_state.page == "Test_Genel":
                 st.session_state.genel_yuzdeler = yuzdeler
                 st.session_state.genel_skorlar = skorlar
                 
-                # DB KAYIT
                 analiz_ozeti = generate_deep_analysis(mizac, None, None, None)
                 save_to_db(st.session_state.user_info, "Mizaç", analiz_ozeti, yuzdeler)
                 
@@ -689,8 +709,6 @@ elif st.session_state.page == "Test_Cakra":
             if missing_count == 0:
                 st.session_state.results_cakra = calculate_cakra_results(cevaplar_cakra)
                 
-                # DB KAYIT
-                # Varsa mizaç verisini de kullan
                 analiz_ozeti = generate_deep_analysis(st.session_state.results_genel, st.session_state.results_cakra, st.session_state.scores.get("isi"), st.session_state.scores.get("nem"))
                 save_to_db(st.session_state.user_info, "Çakra", analiz_ozeti, st.session_state.results_cakra)
                 
@@ -707,7 +725,6 @@ elif st.session_state.page == "Rapor":
     tarih = datetime.now().strftime("%d.%m.%Y")
     st.markdown(f"## 📄 Analiz Sonuçları: {st.session_state.user_info.get('ad')}")
     
-    # 1. AKILLI DERİN ANALİZ (Var olan datayı kullanır)
     derin_analiz = generate_deep_analysis(
         st.session_state.results_genel, 
         st.session_state.results_cakra,
@@ -716,7 +733,6 @@ elif st.session_state.page == "Rapor":
     )
     st.info(f"🧠 **Uzman Yorumu:** {derin_analiz}")
 
-    # 2. GRAFİKLER (Varsa oluştur)
     fig_cakra_html = ""
     if st.session_state.results_cakra:
         data = st.session_state.results_cakra
@@ -758,7 +774,6 @@ elif st.session_state.page == "Rapor":
 
         st.info(f"Baskın Mizaç: **{st.session_state.results_genel}**")
 
-    # 3. HTML RAPOR OLUŞTURMA
     any_result = any([st.session_state.results_genel, st.session_state.results_cakra, st.session_state.results_isi, st.session_state.results_nem])
     
     if any_result:
