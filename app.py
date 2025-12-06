@@ -2,25 +2,26 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import sqlite3
-from datetime import datetime
+from datetime import datetime, date
 import time
 import os
 import json
 import base64
+import io
 
 # ==========================================
 # 1. AYARLAR VE STİL YAPILANDIRMASI
 # ==========================================
 st.set_page_config(page_title="Dr. Sait SEVİNÇ - Pro Asistan", layout="wide", page_icon="🧬")
 
-# Grafik Ayarları (Mobil Dostu - Sabit)
+# Grafik Ayarları
 PLOTLY_CONFIG = {
-    'staticPlot': True,       # Mobilde zoom/pan kilitli (kaydırmayı bozmaz)
-    'displayModeBar': False,  # Menüyü gizle
+    'staticPlot': True,
+    'displayModeBar': False,
     'showTips': False
 }
 
-# --- CSS: GÖRSEL TASARIM (ORİJİNAL GÜZELLİK GERİ GELDİ) ---
+# --- CSS: PRO TASARIM ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
@@ -29,7 +30,8 @@ st.markdown("""
     /* MENU KARTLARI */
     .menu-card {
         background: linear-gradient(145deg, #ffffff, #f0f2f5);
-        padding: 20px; border-radius: 16px;
+        padding: 20px;
+        border-radius: 16px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         text-align: center; border: 1px solid rgba(255,255,255,0.8);
         height: 200px; display: flex; flex-direction: column;
@@ -37,100 +39,133 @@ st.markdown("""
         transition: all 0.3s ease; position: relative; cursor: pointer;
     }
     .menu-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(52, 152, 219, 0.2); border-color: #3498db; }
-    .card-done { border: 2px solid #2ecc71 !important; background: linear-gradient(145deg, #f0fff4, #ffffff) !important; }
-    .status-badge { background-color: #2ecc71; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; margin-bottom: 10px; }
+    
+    .card-done { 
+        border: 2px solid #2ecc71 !important; 
+        background: linear-gradient(145deg, #f0fff4, #ffffff) !important;
+    }
+    
+    .status-badge { 
+        background-color: #2ecc71; color: white; 
+        padding: 4px 12px; border-radius: 12px; 
+        font-size: 0.8rem; font-weight: bold; margin-bottom: 10px; 
+        box-shadow: 0 2px 5px rgba(46,204,113,0.3);
+    }
+    
     .card-icon { font-size: 40px; margin-bottom: 10px; }
     .card-title { font-size: 1.1rem; font-weight: 700; color: #2c3e50; margin-bottom: 5px; }
     .card-desc { font-size: 0.9rem; color: #7f8c8d; }
 
-    /* SORU KUTULARI (DİNAMİK RENKLENDİRME İÇİN) */
+    /* SORU KUTULARI */
     .q-box { 
-        padding: 15px 20px; 
+        padding: 15px 20px;
         border-radius: 12px; 
-        margin-bottom: 10px; 
+        margin-bottom: 12px; 
         transition: all 0.3s ease;
     }
-    /* Varsayılan: Gri/Mavi */
+    
     .q-default { background: #f8fbfe; border: 1px solid #dceefb; border-left: 5px solid #bdc3c7; }
-    /* Cevaplanmış: Yeşil ve Parlak */
-    .q-filled { background: #ffffff; border: 1px solid #e0ffe8; border-left: 5px solid #2ecc71; box-shadow: 0 2px 5px rgba(46,204,113,0.1); }
-    /* Hatalı (Boş): Kırmızı ve Uyarıcı */
-    .q-error { background: #fff5f5; border: 1px solid #ffe0e0; border-left: 5px solid #e74c3c; animation: shake 0.4s; }
     
-    .q-text { font-size: 1.05rem; font-weight: 500; color: #34495e; margin-bottom: 8px; }
-
-    /* STREAMLIT WIDGET AYARLARI */
-    .stRadio > div { gap: 0px !important; margin-top: -10px; padding-left: 10px; }
-    .stButton button { border-radius: 10px; font-weight: 600; transition: 0.3s; width: 100%; }
-    
-    @keyframes shake {
-      0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-5px); } 100% { transform: translateX(0); }
+    .q-filled { 
+        background: #ffffff; 
+        border: 1px solid #e0ffe8; border-left: 5px solid #2ecc71; 
+        box-shadow: 0 2px 8px rgba(46,204,113,0.1);
     }
     
-    @media (max-width: 768px) {
-        .menu-card { height: auto; min-height: 160px; padding: 15px; margin-bottom: 15px; }
-        .stRadio label { font-size: 0.9rem !important; }
+    .q-error { 
+        background: #fff5f5; 
+        border: 1px solid #ffcccc; border-left: 5px solid #e74c3c; 
+        animation: shake 0.4s;
+        box-shadow: 0 2px 8px rgba(231, 76, 60, 0.15);
+    }
+    
+    .q-text { font-size: 1.05rem; font-weight: 500; color: #34495e; margin-bottom: 8px; }
+    .section-header { font-size: 1.3rem; font-weight: 700; color: #2c3e50; margin-top: 25px; margin-bottom: 15px; border-bottom: 2px solid #ecf0f1; padding-bottom: 5px; }
+
+    /* WIDGET AYARLARI */
+    .stRadio > div { gap: 0px !important; margin-top: -10px; padding-left: 10px; }
+    .stButton button { border-radius: 10px; font-weight: 600; transition: 0.3s; width: 100%; height: 50px; }
+    
+    /* ERROR BOX */
+    .error-box {
+        padding: 15px; background-color: #fee; color: #c00; border: 1px solid #fcc;
+        border-radius: 10px; margin-bottom: 15px; font-weight: bold; text-align: center;
+    }
+
+    @keyframes shake {
+      0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 
+      50% { transform: translateX(5px); } 75% { transform: translateX(-5px); } 
+      100% { transform: translateX(0); }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. VERİTABANI (KAYIT SİSTEMİ)
+# 2. VERİTABANI VE KAYNAKLAR
 # ==========================================
 def init_db():
     conn = sqlite3.connect('analiz_gecmisi.db', check_same_thread=False)
     c = conn.cursor()
+    # Mevcut yapıyı koruyoruz, yaş hesaplanıp yas sütununa yazılacak
     c.execute('''CREATE TABLE IF NOT EXISTS sonuclar
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   ad TEXT, yas INTEGER, cinsiyet TEXT, tarih TEXT, 
-                  tip TEXT, ozet TEXT, detay_json TEXT)''')
+                  tip TEXT, ozet TEXT, detail_json TEXT)''')
     conn.commit()
     return conn
 
 CONN = init_db()
 
-# --- KAYNAK YÜKLEME ---
 @st.cache_data
 def load_resources():
     logo_path = "drsaitlogo.jpeg"
     default_logo = "https://i.ibb.co/xJc52gL/image-0.png"
-    # Mizaç Kütüphanesi
-    default_json = {
-        "Safravi": {"Genel": "Sıcak-Kuru mizaç. Ateş elementi.", "Beslenme": "Serinletici gıdalar (Salatalık, marul).", "Riskler": ["Migren", "Safra", "Uykusuzluk"]},
-        "Demevi": {"Genel": "Sıcak-Nemli mizaç. Hava elementi.", "Beslenme": "Az ve sık yiyin, kırmızı eti azaltın.", "Riskler": ["Yüksek Tansiyon", "Kalp"]},
-        "Balgami": {"Genel": "Soğuk-Nemli mizaç. Su elementi.", "Beslenme": "Isıtıcı baharatlar kullanın.", "Riskler": ["Obezite", "Romatizma", "Unutkanlık"]},
-        "Sovdavi": {"Genel": "Soğuk-Kuru mizaç. Toprak elementi.", "Beslenme": "Nemlendirici ve sıcak gıdalar.", "Riskler": ["Depresyon", "Varis", "Kabızlık"]}
+    
+    mizac_bilgileri = {
+        "Safravi": {"Genel": "Sıcak-Kuru mizaç. Ateş elementi.", "Beslenme": "Serinletici gıdalar (Salatalık, marul, yoğurt).", "Riskler": ["Migren", "Safra Taşları", "Uykusuzluk", "Öfke Kontrolü"]},
+        "Demevi": {"Genel": "Sıcak-Nemli mizaç. Hava elementi.", "Beslenme": "Az ve sık yiyin. Kırmızı eti azaltın, yeşillik artırın.", "Riskler": ["Yüksek Tansiyon", "Kalp Rahatsızlıkları", "Cilt Sorunları"]},
+        "Balgami": {"Genel": "Soğuk-Nemli mizaç. Su elementi.", "Beslenme": "Isıtıcı baharatlar (Zencefil, kekik) tüketin.", "Riskler": ["Obezite", "Romatizma", "Unutkanlık", "Ödem"]},
+        "Sovdavi": {"Genel": "Soğuk-Kuru mizaç. Toprak elementi.", "Beslenme": "Nemlendirici ve sıcak gıdalar. Kuru bakliyatı azaltın.", "Riskler": ["Depresyon", "Varis", "Kabızlık", "Kuruntu"]}
     }
-    return logo_path, default_logo, default_json
+    return logo_path, default_logo, mizac_bilgileri
 
 LOGO_LOCAL, LOGO_URL, MIZAC_BILGILERI = load_resources()
+
+def calculate_age(birth_date):
+    today = date.today()
+    return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
 
 # ==========================================
 # 3. YARDIMCI MOTORLAR
 # ==========================================
-# Derin Analiz Motoru
 def generate_deep_analysis(mizac, cakra_sonuclar, skorlar_isi, skorlar_nem):
     yorumlar = []
     
     # 1. Isı/Nem Dengesi
-    if skorlar_isi and skorlar_isi > 80: yorumlar.append("🔥 **Metabolik Ateş Yüksek:** Vücut ısınız çok yüksek, bu durum inflamasyona zemin hazırlayabilir.")
+    if skorlar_isi and skorlar_isi > 80: yorumlar.append("🔥 **Metabolik Ateş Yüksek:** Vücut ısınızın yüksekliği inflamasyona zemin hazırlayabilir.")
     if skorlar_nem and skorlar_nem > 70: yorumlar.append("💧 **Nem Fazlalığı:** Vücutta ödem ve ağırlık birikimi olabilir. Lenfatik drenaj önerilir.")
+    if skorlar_nem and skorlar_nem < 40: yorumlar.append("🌵 **Kuruluk Hakim:** Cilt ve mukoza kuruluğu artabilir, hidrasyona dikkat ediniz.")
 
     # 2. Mizaç Yorumu
-    if mizac == "Safravi": yorumlar.append("🦁 **Safravi:** Lider ruhlu ama çabuk parlayan bir yapı. Karaciğer detoksu şart.")
-    elif mizac == "Sovdavi": yorumlar.append("🦅 **Sovdavi:** Derin düşünen, melankoliye yatkın yapı. Bağırsak florasını (İkinci beyin) korumalısınız.")
+    if mizac == "Safravi": yorumlar.append("🦁 **Safravi:** Lider ruhlu, hızlı karar alan yapı. Karaciğer detoksu şart.")
+    elif mizac == "Demevi": yorumlar.append("🌬️ **Demevi:** Sosyal, neşeli fakat kan basıncı dalgalanmalarına açık.")
+    elif mizac == "Balgami": yorumlar.append("🌊 **Balgami:** Sakin, uyumlu fakat harekete geçmekte zorlanan yapı. Metabolizmayı hızlandırmalısınız.")
+    elif mizac == "Sovdavi": yorumlar.append("🦅 **Sovdavi:** Derin düşünen, hassas yapı. Bağırsak florasını (İkinci beyin) korumalısınız.")
 
     # 3. Çakra Kombinasyonu
     if cakra_sonuclar:
         kok = cakra_sonuclar.get("KÖK ÇAKRA (Muladhara)", {}).get("durum")
+        solar = cakra_sonuclar.get("SOLAR PLEXUS (Manipura)", {}).get("durum")
+        
         if kok and ("Yavaş" in kok) and mizac == "Sovdavi":
-            yorumlar.append("⚠️ **Önemli:** Toprak mizacı + Kök blokajı = Aşırı kaygı ve güvensizlik yaratabilir. Topraklanma çalışmaları yapın.")
+            yorumlar.append("⚠️ **Kök Blokajı:** Toprak mizacı ile birleşen kök çakra blokajı, aşırı kaygı ve güvensizlik yaratabilir.")
+        if solar and ("Aşırı" in solar) and mizac == "Safravi":
+            yorumlar.append("⚠️ **Solar Ateşi:** Safravi mizaç ile aşırı aktif Solar Plexus, öfke patlamalarına ve mide sorunlarına yol açabilir.")
             
-    if not yorumlar: yorumlar.append("✅ Genel enerji akışınız dengeli görünüyor.")
+    if not yorumlar: yorumlar.append("✅ Genel enerji akışınız ve mizaç dengeniz stabil görünüyor.")
     
     return " ".join(yorumlar)
 
-# Veritabanı Kayıt
 def save_to_db(user_info, test_type, summary_text, detail_data):
     try:
         c = CONN.cursor()
@@ -139,7 +174,7 @@ def save_to_db(user_info, test_type, summary_text, detail_data):
         c.execute("INSERT INTO sonuclar (ad, yas, cinsiyet, tarih, tip, ozet, detail_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
                   (user_info['ad'], user_info['yas'], user_info['cinsiyet'], tarih, test_type, summary_text, detail_json))
         CONN.commit()
-        st.toast("✅ Kayıt Başarılı!", icon="💾")
+        st.toast("✅ Kayıt Veritabanına İşlendi!", icon="💾")
     except Exception as e:
         st.error(f"Kayıt Hatası: {e}")
 
@@ -150,8 +185,9 @@ def get_image_base64(path):
     return None
 
 # ==========================================
-# 4. TEST VERİLERİ (TAM SET)
+# 4. TEST VERİLERİ (SABİT)
 # ==========================================
+# (Burada veri setlerinizi kısaltmadan olduğu gibi kullanıyoruz)
 SORULAR_ISI = [
     {"text": "Boş vakitlerinizde ne yaparsınız?", "options": [{"text": "Evde zaman geçirmek", "value": 1}, {"text": "Çoğunlukla evde", "value": 2}, {"text": "Bazen evde bezen dışarda", "value": 3}, {"text": "Genellikle dışarda", "value": 4}, {"text": "Evin dışında", "value": 5}]},
     {"text": "Düzene karşı tutumunuz?", "options": [{"text": "Her zaman temiz ve düzenliyim", "value": 1}, {"text": "Çoğunlukla düzenli", "value": 2}, {"text": "Orta", "value": 3}, {"text": "Dağınıklığı sevmem ama yapmam", "value": 4}, {"text": "Dağınık ama bulurum", "value": 5}]},
@@ -227,42 +263,40 @@ def init_state():
             "submitted_genel": False, "submitted_isi": False, "submitted_nem": False, "submitted_cakra": False
         })
 
-# --- SORU RENDER MOTORU (GÖRSEL DÜZELTMELER BURADA) ---
+# --- SORU RENDER MOTORU (DÜZELTİLMİŞ) ---
 def render_questions_pro(soru_listesi, key_prefix, submitted):
     total_score = 0
-    missing = False
+    missing_count = 0
     
     for i, soru in enumerate(soru_listesi):
         key = f"{key_prefix}_{i}"
         val = st.session_state.get(key)
         
-        # Dinamik CSS Sınıfı Belirleme
         box_class = "q-default"
-        if val is not None: box_class = "q-filled"
-        elif submitted: box_class = "q-error" # Sadece gönderildiyse ve boşsa kırmızı yap
+        if val is not None: 
+            box_class = "q-filled"
+        elif submitted: 
+            box_class = "q-error" # Gönderildi ve boşsa kırmızı
         
-        # HTML ile Soruyu Çiz
         st.markdown(f"""<div class='q-box {box_class}'><div class='q-text'>{i+1}. {soru['text']}</div></div>""", unsafe_allow_html=True)
         
-        # Seçenekleri Hazırla
         options_map = {opt['text']: opt['value'] for opt in soru['options']}
         
-        # Radio Buton (index=None ile varsayılan seçimi kaldırıyoruz!)
         choice = st.radio(
             f"{key}_radio", 
             options=list(options_map.keys()), 
             key=key, 
-            index=None, # İŞTE BU! Varsayılanı boş getirir.
+            index=None, 
             label_visibility="collapsed",
             horizontal=True
         )
         
         if choice: total_score += options_map[choice]
-        else: missing = True
+        else: missing_count += 1
             
-    return total_score, missing
+    return total_score, missing_count
 
-# --- HTML RAPOR OLUŞTURUCU (RESPONSIVE) ---
+# --- HTML RAPOR ---
 def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, fig_cakra_html, cakra_sonuclar, derin_analiz):
     img_data = get_image_base64(LOGO_LOCAL)
     img_src = f"data:image/jpeg;base64,{img_data}" if img_data else LOGO_URL
@@ -274,7 +308,6 @@ def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, 
     if "Riskler" in detaylar:
         for r in detaylar["Riskler"]: risk_html += f"<li>{r}</li>"
 
-    # Çakra Tablosu
     cakra_rows = ""
     if cakra_sonuclar:
         for cakra, degerler in cakra_sonuclar.items():
@@ -299,13 +332,6 @@ def create_html_report(user_info, mizac, detaylar, tarih, fig1_html, fig2_html, 
             table {{ width: 100%; border-collapse: collapse; }}
             th, td {{ padding: 8px; border-bottom: 1px solid #eee; text-align: center; font-size: 0.9em; }}
             td:first-child {{ text-align: left; }}
-            @media screen and (max-width: 768px) {{
-                table, thead, tbody, th, td, tr {{ display: block; }}
-                thead tr {{ position: absolute; top: -9999px; left: -9999px; }}
-                tr {{ border: 1px solid #ccc; margin-bottom: 10px; border-radius: 8px; }}
-                td {{ border: none; border-bottom: 1px solid #eee; position: relative; padding-left: 50%; text-align: right; }}
-                td:before {{ position: absolute; top: 6px; left: 6px; width: 45%; padding-right: 10px; white-space: nowrap; text-align: left; font-weight: bold; content: attr(data-label); }}
-            }}
         </style>
     </head>
     <body>
@@ -347,7 +373,6 @@ def genel_mizac_hesapla(cevaplar):
         skorlar[bolum] = toplam
         yuzdeler[bolum] = (toplam / max_puan) * 100 if max_puan > 0 else 0
     
-    # Mizaç Belirleme
     isi = "SICAK" if yuzdeler["SICAKLIK"] >= yuzdeler["SOĞUKLUK"] else "SOĞUK"
     nem = "KURU" if yuzdeler["KURULUK"] >= yuzdeler["NEMLİLİK"] else "NEMLİ"
     
@@ -364,10 +389,8 @@ def calculate_cakra_results(answers):
     for cakra_adi, sorular in SORULAR_CAKRA.items():
         yavas_toplam = 0
         asiri_toplam = 0
-        # İlk 8 soru yavaşlık, Sonraki 8 soru aşırılık (Toplam 16 soru)
         for i in range(16):
             key = f"cakra_{cakra_adi}_{i}"
-            # 1-5 arası puan (index+1)
             val = answers.get(key, 0)
             if i < 8: yavas_toplam += val
             else: asiri_toplam += val
@@ -396,7 +419,6 @@ with st.sidebar:
     if st.button("🏠 Ana Menü"): st.session_state.page = "Menu"; st.rerun()
     st.divider()
     
-    # Durumlar
     chk = lambda x: "✅" if x else "⬜"
     st.caption("Tamamlanan Analizler")
     st.markdown(f"{chk(st.session_state.results_genel)} Genel Mizaç")
@@ -420,41 +442,61 @@ if st.session_state.page == "Giriş":
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
         with st.container(border=True):
-            ad = st.text_input("Adınız Soyadınız")
+            st.markdown("### Hasta Bilgileri")
+            ad = st.text_input("Ad Soyad")
             c1_ic, c2_ic = st.columns(2)
             with c1_ic: cinsiyet = st.selectbox("Cinsiyet", ["Kadın", "Erkek"])
-            with c2_ic: yas = st.number_input("Yaşınız", 10, 100, 30)
+            with c2_ic: 
+                # PRO DOKUNUŞ: Doğum Tarihi ile Yaş Hesaplama
+                dogum_tarihi = st.date_input("Doğum Tarihi", min_value=date(1940, 1, 1), max_value=date.today())
+            
+            yas = calculate_age(dogum_tarihi)
+            
             if st.button("Analize Başla 🚀", type="primary", use_container_width=True):
-                if ad: st.session_state.user_info = {"ad": ad, "cinsiyet": cinsiyet, "yas": yas}; st.session_state.page = "Menu"; st.rerun()
-                else: st.warning("İsim giriniz.")
+                if ad: 
+                    st.session_state.user_info = {"ad": ad, "cinsiyet": cinsiyet, "yas": yas}
+                    st.session_state.page = "Menu"
+                    st.rerun()
+                else: st.warning("Lütfen isim giriniz.")
 
 elif st.session_state.page == "History":
     st.title("🗄️ Hasta Kayıtları")
-    # Veritabanını İndirme Butonu
-    with open("analiz_gecmisi.db", "rb") as fp:
-        btn = st.download_button(label="📥 Veritabanını İndir (.db)", data=fp, file_name="analiz_gecmisi.db", mime="application/octet-stream")
     
-    st.markdown("---")
     c = CONN.cursor()
     c.execute("SELECT * FROM sonuclar ORDER BY id DESC")
     data = c.fetchall()
+    
     if data:
         df = pd.DataFrame(data, columns=["ID", "Ad", "Yaş", "Cinsiyet", "Tarih", "Tip", "Özet", "JSON"])
+        
+        # PRO DOKUNUŞ: EXCEL İNDİRME
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            df.drop(columns=["JSON"]).to_excel(writer, index=False, sheet_name='Hastalar')
+        
+        st.download_button(
+            label="📥 Listeyi Excel Olarak İndir (.xlsx)",
+            data=buffer,
+            file_name="Hasta_Kayitlari.xlsx",
+            mime="application/vnd.ms-excel",
+            type="primary"
+        )
+        
         st.dataframe(df.drop(columns=["JSON"]), use_container_width=True)
     else:
-        st.info("Henüz kayıt yok.")
+        st.info("Henüz kayıt bulunmamaktadır.")
     
     if st.button("Geri"): st.session_state.page = "Menu"; st.rerun()
 
 elif st.session_state.page == "Menu":
-    st.subheader(f"Hoşgeldiniz, {st.session_state.user_info['ad']}")
+    st.subheader(f"Hoşgeldiniz, {st.session_state.user_info['ad']} (Yaş: {st.session_state.user_info['yas']})")
     c1, c2 = st.columns(2)
     c3, c4 = st.columns(2)
     
     def create_card(col, title, icon, desc, key, target, done):
         css = "menu-card card-done" if done else "menu-card"
         badge = "<div class='status-badge'>✅ Tamamlandı</div>" if done else ""
-        btn_txt = "Tekrarla" if done else "Başla"
+        btn_txt = "Sonuçları Gör" if done else "Başla"
         with col:
             st.markdown(f"""<div class="{css}">{badge}<span class="card-icon">{icon}</span><span class="card-title">{title}</span><span class="card-desc">{desc}</span></div>""", unsafe_allow_html=True)
             if st.button(btn_txt, key=key, use_container_width=True): st.session_state.page = target; st.rerun()
@@ -466,12 +508,18 @@ elif st.session_state.page == "Menu":
 
 elif st.session_state.page == "Test_Isi":
     st.title("🔥 Isı Analizi (20 Soru)")
-    score, missing = render_questions_pro(SORULAR_ISI, "isi", st.session_state.submitted_isi)
+    
+    score, missing_count = render_questions_pro(SORULAR_ISI, "isi", st.session_state.submitted_isi)
+    
+    # PRO DOKUNUŞ: EKSİK SORU UYARISI
+    if st.session_state.submitted_isi and missing_count > 0:
+        st.error(f"⚠️ Toplam {missing_count} adet soru boş bırakıldı. Lütfen kırmızı ile işaretlenen alanları doldurunuz.")
+
     c1, c2 = st.columns([3, 1])
     with c1:
         if st.button("Kaydet", type="primary"):
             st.session_state.submitted_isi = True
-            if not missing:
+            if missing_count == 0:
                 st.session_state.results_isi = calculate_result_isi(score)
                 st.session_state.scores["isi"] = score
                 st.success("Kaydedildi!"); time.sleep(0.5); st.session_state.page = "Menu"; st.rerun()
@@ -481,12 +529,17 @@ elif st.session_state.page == "Test_Isi":
 
 elif st.session_state.page == "Test_Nem":
     st.title("💧 Nem Analizi (20 Soru)")
-    score, missing = render_questions_pro(SORULAR_NEM, "nem", st.session_state.submitted_nem)
+    
+    score, missing_count = render_questions_pro(SORULAR_NEM, "nem", st.session_state.submitted_nem)
+    
+    if st.session_state.submitted_nem and missing_count > 0:
+        st.error(f"⚠️ Toplam {missing_count} adet soru boş bırakıldı. Lütfen kırmızı ile işaretlenen alanları doldurunuz.")
+        
     c1, c2 = st.columns([3, 1])
     with c1:
         if st.button("Kaydet", type="primary"):
             st.session_state.submitted_nem = True
-            if not missing:
+            if missing_count == 0:
                 st.session_state.results_nem = calculate_result_nem(score)
                 st.session_state.scores["nem"] = score
                 st.success("Kaydedildi!"); time.sleep(0.5); st.session_state.page = "Menu"; st.rerun()
@@ -497,9 +550,8 @@ elif st.session_state.page == "Test_Nem":
 elif st.session_state.page == "Test_Genel":
     st.title("🦁 Genel Mizaç Testi")
     cevaplar = {}
-    missing_flag = False
+    missing_count = 0
     
-    # Dictionary yapısı olduğu için özel render
     for bolum, veri in SORULAR_GENEL_DETAYLI.items():
         st.markdown(f'<div class="section-header">{bolum}</div>', unsafe_allow_html=True)
         secenekler = list(veri["puanlar"].keys()); secenekler.sort(key=lambda x: veri["puanlar"][x])
@@ -514,26 +566,26 @@ elif st.session_state.page == "Test_Genel":
             choice = st.radio(f"{key}_rd", secenekler, key=key, index=None, label_visibility="collapsed", horizontal=True)
             
             if choice: cevaplar[key] = choice
-            else: missing_flag = True
+            else: missing_count += 1
+            
+    if st.session_state.submitted_genel and missing_count > 0:
+        st.error(f"⚠️ Toplam {missing_count} adet soru boş bırakıldı. Lütfen kırmızı ile işaretlenen alanları doldurunuz.")
 
     c1, c2 = st.columns([3, 1])
     with c1:
         if st.button("Analizi Bitir", type="primary"):
             st.session_state.submitted_genel = True
-            if missing_flag:
-                st.error("Lütfen eksik soruları tamamlayınız.")
-                st.rerun()
-            else:
+            if missing_count == 0:
                 mizac, skorlar, yuzdeler = genel_mizac_hesapla(cevaplar)
                 st.session_state.results_genel = mizac
                 st.session_state.genel_yuzdeler = yuzdeler
                 st.session_state.genel_skorlar = skorlar
                 
-                # DB KAYIT
                 analiz_ozeti = generate_deep_analysis(mizac, None, 0, 0)
                 save_to_db(st.session_state.user_info, "Mizaç", analiz_ozeti, yuzdeler)
                 
                 st.success("Mizaç analizi tamamlandı!"); time.sleep(1); st.session_state.page = "Menu"; st.rerun()
+            else: st.rerun()
     with c2:
         if st.button("İptal"): st.session_state.page = "Menu"; st.rerun()
 
@@ -551,30 +603,27 @@ elif st.session_state.page == "Test_Cakra":
             key = f"cakra_{cakra}_{i}"
             val = st.session_state.get(key)
             
-            # Dinamik CSS
             box_class = "q-filled" if val else ("q-error" if st.session_state.submitted_cakra else "q-default")
-            
             st.markdown(f"<div class='q-box {box_class}'><div class='q-text'>{i+1}. {soru}</div></div>", unsafe_allow_html=True)
             
-            # Index=None ile boş gelmesini sağla
             choice = st.radio(f"{key}_rd", labels, key=key, index=None, horizontal=True, label_visibility="collapsed")
             
             if choice: cevaplar_cakra[key] = labels.index(choice) + 1
             else: missing_count += 1
+            
+    if st.session_state.submitted_cakra and missing_count > 0:
+        st.error(f"⚠️ Toplam {missing_count} adet soru boş bırakıldı. Lütfen kırmızı ile işaretlenen alanları doldurunuz.")
 
     c1, c2 = st.columns([3, 1])
     with c1:
         if st.button("Analizi Bitir", type="primary"):
             st.session_state.submitted_cakra = True
-            if missing_count > 0:
-                st.error(f"{missing_count} adet boş soru var. Lütfen (Kırmızı) alanları doldurunuz.")
-                st.rerun()
-            else:
+            if missing_count == 0:
                 st.session_state.results_cakra = calculate_cakra_results(cevaplar_cakra)
-                # DB KAYIT
                 analiz_ozeti = generate_deep_analysis(st.session_state.results_genel, st.session_state.results_cakra, 0, 0)
                 save_to_db(st.session_state.user_info, "Çakra", analiz_ozeti, st.session_state.results_cakra)
                 st.success("Kaydedildi!"); time.sleep(1); st.session_state.page = "Menu"; st.rerun()
+            else: st.rerun()
     with c2:
         if st.button("İptal"): st.session_state.page = "Menu"; st.rerun()
 
@@ -582,7 +631,6 @@ elif st.session_state.page == "Rapor":
     tarih = datetime.now().strftime("%d.%m.%Y")
     st.markdown(f"## 📄 Analiz Sonuçları: {st.session_state.user_info.get('ad')}")
     
-    # 1. Derin Analiz Metni
     derin_analiz = generate_deep_analysis(
         st.session_state.results_genel, 
         st.session_state.results_cakra,
@@ -591,7 +639,6 @@ elif st.session_state.page == "Rapor":
     )
     st.info(f"🧠 **Uzman Yorumu:** {derin_analiz}")
 
-    # 2. Çakra Grafiği (Sabit)
     fig_cakra_html = ""
     if st.session_state.results_cakra:
         data = st.session_state.results_cakra
@@ -603,22 +650,17 @@ elif st.session_state.page == "Rapor":
         fig_cakra.add_trace(go.Bar(x=cakra_names, y=yavas_vals, name='Blokaj/Yavaş', marker_color='#5DADE2'))
         fig_cakra.add_trace(go.Bar(x=cakra_names, y=asiri_vals, name='Aşırı Aktif', marker_color='#EC7063'))
         
-        # Yeşil Bant
         fig_cakra.add_shape(type="rect", x0=-0.5, x1=len(cakra_names)-0.5, y0=20, y1=25, fillcolor="Green", opacity=0.15, layer="below", line_width=0)
-        # Kırmızı Eşik
         fig_cakra.add_shape(type="line", x0=-0.5, x1=len(cakra_names)-0.5, y0=30, y1=30, line=dict(color="red", width=2, dash="dot"))
         
         fig_cakra.update_layout(barmode='group', title="Çakra Enerji Dengesi", height=400, margin=dict(t=40, b=40, l=40, r=40), plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[0, 45]))
-        
         fig_cakra_html = fig_cakra.to_html(full_html=False, include_plotlyjs='cdn', config=PLOTLY_CONFIG)
         st.plotly_chart(fig_cakra, use_container_width=True, config=PLOTLY_CONFIG)
         
-        # Detay Tablo
         df_cakra = pd.DataFrame.from_dict(data, orient='index')
         with st.expander("Detaylı Tabloyu Göster"):
             st.dataframe(df_cakra)
 
-    # 3. Mizaç Grafikleri
     fig1_html, fig2_html = "", ""
     if st.session_state.results_genel:
         yuzdeler = st.session_state.genel_yuzdeler
@@ -626,7 +668,6 @@ elif st.session_state.page == "Rapor":
         vals = [yuzdeler.get(k, 0) for k in cats]
         
         c1, c2 = st.columns(2)
-        
         fig1 = go.Figure(go.Bar(x=cats, y=vals, marker_color=['#3498DB', '#2ECC71', '#E74C3C', '#F1C40F']))
         fig1.update_layout(height=300, margin=dict(t=10,b=10,l=10,r=10))
         fig1_html = fig1.to_html(full_html=False, include_plotlyjs='cdn', config=PLOTLY_CONFIG)
@@ -636,10 +677,9 @@ elif st.session_state.page == "Rapor":
         fig2.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), height=300, margin=dict(t=20,b=20,l=30,r=30))
         fig2_html = fig2.to_html(full_html=False, include_plotlyjs='cdn', config=PLOTLY_CONFIG)
         with c2: st.plotly_chart(fig2, use_container_width=True, config=PLOTLY_CONFIG)
-        
+
         st.info(f"Baskın Mizaç: **{st.session_state.results_genel}**")
 
-    # 4. Rapor İndirme
     if st.session_state.results_genel or st.session_state.results_cakra:
         detaylar = MIZAC_BILGILERI.get(st.session_state.results_genel, {}) if st.session_state.results_genel else {}
         mizac_adi = st.session_state.results_genel if st.session_state.results_genel else None
